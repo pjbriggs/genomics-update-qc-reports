@@ -6,6 +6,8 @@ import os
 from auto_process_ngs.utils import AnalysisFastq
 from bcftbx.qc.report import strip_ngs_extensions
 from bcftbx.FASTQFile import FastqIterator
+from bcftbx.htmlpagewriter import HTMLPageWriter
+from bcftbx.htmlpagewriter import PNGBase64Encoder
 from PIL import Image
 
 #######################################################################
@@ -30,19 +32,79 @@ class QCReporter:
         for sample in self._project.samples:
             self._samples.append(QCSample(sample))
 
+    @property
+    def name(self):
+        return self._project.name
+
+    @property
+    def paired_end(self):
+        return self._project.info.paired_end
+
     def report(self):
         """
         Report the QC for the project
 
         """
+        # Initialise HTML
+        html = HTMLPageWriter("%s" % self.name)
+        html.add("<h1>%s: QC report</h1>" % self.name)
+        # Styles
+        html.addCSSRule("table.summary { border: solid 1px grey;\n"
+                        "                background-color: white;\n"
+                        "                font-size: 90% }")
+        html.addCSSRule("table.summary th { background-color: grey;\n"
+                        "                   color: white;\n"
+                        "                   padding: 2px 5px; }")
+        html.addCSSRule("table.summary td { text-align: right; \n"
+                        "                   padding: 2px 5px;\n"
+                        "                   border-bottom: solid 1px lightgray; }")
+        # Write summary table
+        html.add("<table class='summary'>")
+        html.add("<tr><th>Sample</th>")
+        if self.paired_end:
+            html.add("<th>Fastq (R1)</th><th>Fastq (R2)</th>")
+        else:
+            html.add("<th>Fastq</th>")
+        html.add("<th>Reads</th><th>R1</th>")
+        if self.paired_end:
+            html.add("<th>R2</th>")
+        html.add("</tr>")
+        # Write entries for samples, fastqs etc
+        current_sample = None
         for sample in self._samples:
-            print "%s" % s.name
-            for fq_pair in s.get_fastq_pairs(sample):
-                if self._project.paired_end:
-                    print "%s\t%s" % (os.path.basename(fq_pair[0]),
-                                      os.path.basename(fq_pair[1]))
-                else:
-                    print "%s" % os.path.basename(fq_pair[0])
+            sample_name = sample.name
+            for fq_pair in sample.fastq_pairs:
+                # Sample name for first pair only
+                html.add("<tr><td>%s</td>" % sample_name)
+                # Fastq name(s)
+                html.add("<td>%s</td>" % os.path.basename(fq_pair[0]))
+                if self.paired_end:
+                    html.add("<td>%s</td>" % os.path.basename(fq_pair[1]))
+                # Number of reads
+                html.add("<td>?</td>")
+                # Little boxplot(s)
+                # R1 boxplot
+                tmp_boxplot = "tmp.%s.uboxplot.png" % os.path.basename(fq_pair[0])
+                uboxplot(fq_pair[0],tmp_boxplot)
+                uboxplot64encoded = "data:image/png;base64," + \
+                                    PNGBase64Encoder().encodePNG(tmp_boxplot)
+                html.add("<td><img src='%s' /></td>" % uboxplot64encoded)
+                os.remove(tmp_boxplot)
+                # R2 boxplot
+                if self.paired_end:
+                    tmp_boxplot = "tmp.%s.uboxplot.png" % os.path.basename(fq_pair[1])
+                    uboxplot(fq_pair[1],tmp_boxplot)
+                    uboxplot64encoded = "data:image/png;base64," + \
+                                        PNGBase64Encoder().encodePNG(tmp_boxplot)
+                    html.add("<td><img src='%s' /></td>" % uboxplot64encoded)
+                    os.remove(tmp_boxplot)
+                # End of line
+                html.add("</tr>")
+                # Reset sample name for remaining pairs
+                sample_name = '&nbsp;'
+        # Close off table
+        html.add("</table>")
+        html.write("%s.qcreport.html" % self.name)
 
 class QCSample:
     """
@@ -64,6 +126,10 @@ class QCSample:
     def name(self):
         return self._sample.name
 
+    @property
+    def fastq_pairs(self):
+        return self._fastq_pairs
+
 class QCFastqSet:
     """
     Class describing QC results for a set of Fastq files
@@ -73,13 +139,28 @@ class QCFastqSet:
     """
     def __init__(self,*fastqs):
         """
-        Initialise a new QCFastqSet
+        Initialise a new QCFastqSet instance
 
         Arguments:
            fastqs (str):
 
         """
         self._fastqs = list(fastqs)
+
+class FastqStats:
+    """
+    Class for looking up statistics on Fastq files
+
+    """
+    def __init__(self,stats_file):
+        """
+        Initialise a FastqStats instance
+
+        Arguments:
+           stats_file (str): path to a stats file
+
+        """
+        self._stats_file = stats_file
 
 #######################################################################
 # Functions
@@ -201,7 +282,7 @@ def uboxplot(fastq,outfile):
         nreads += 1
         for pos,q in enumerate(read.quality):
             quality_per_base[pos][q] += 1
-    print quality_per_base
+    #print quality_per_base
 
     # Median etc positions
     # FIXME these are not correct if the list has an odd number of values!
@@ -219,28 +300,28 @@ def uboxplot(fastq,outfile):
 
     # For each base position determine stats
     for pos,counts in enumerate(quality_per_base):
-        print "Position: %d" % pos
+        #print "Position: %d" % pos
         # Expand to a list
         scores = ''
         for q in counts:
             scores += q*counts[q]
         # Sort into order
         scores = ''.join(sorted(scores))
-        print scores
+        #print scores
         # Get the mean (scores are Phred+33 encoded)
         mean = float(sum([(ord(q)-33) for q in scores]))/nreads
-        print "Mean: %.2f" % mean
+        #print "Mean: %.2f" % mean
         # Get the median etc
         median = ord(scores[median_pos])-33
         q25 = ord(scores[q25_pos])-33
         q75 = ord(scores[q75_pos])-33
         p10 = ord(scores[p10_pos])-33
         p90 = ord(scores[p90_pos])-33
-        print "Median: %d" % median
-        print "Q25   : %d" % q25
-        print "Q75   : %d" % q75
-        print "P10   : %d" % p10
-        print "P90   : %d" % p90
+        #print "Median: %d" % median
+        #print "Q25   : %d" % q25
+        #print "Q75   : %d" % q75
+        #print "P10   : %d" % p10
+        #print "P90   : %d" % p90
         # Draw onto the image
         for j in xrange(p10,p90):
             # 10th-90th percentile coloured cyan
