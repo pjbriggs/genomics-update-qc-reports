@@ -20,7 +20,8 @@ setup(
     url = 'https://github.com/pjbriggs/genomics-update-qc-reports',
     maintainer = 'Peter Briggs',
     maintainer_email = 'peter.briggs@manchester.ac.uk',
-    packages = ['qcreport',],
+    packages = ['qcreport',
+                'qcreport.cli'],
     entry_points = { 'console_scripts': [
         'qcreporter2 = qcreport.cli.qcreporter2:main',
         'uboxplot = qcreport.cli.uboxplot:main',]

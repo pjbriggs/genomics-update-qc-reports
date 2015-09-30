@@ -2,14 +2,16 @@
 #
 # Micro boxplot generation from Fastq quality data
 
+from .. import get_version
 import sys
 import os
 import optparse
-from .illumina import uboxplot
+from ..illumina import uboxplot
 
-def main()
+def main():
     # Process command line
-    p = optparse.OptionParser()
+    p = optparse.OptionParser(usage="%prog FASTQ",
+                              version="%prog "+get_version(),)
     opts,args = p.parse_args()
     if len(args) != 1:
         p.error("Need to supply fastq file")

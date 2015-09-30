@@ -3,7 +3,7 @@
 #     qcreporter2.py: generate report file for Illumina NGS qc runs
 #     Copyright (C) University of Manchester 2015 Peter Briggs
 #
-from . import get_version
+from .. import get_version
 
 #######################################################################
 # Imports
@@ -12,7 +12,7 @@ from . import get_version
 import os
 import optparse
 from auto_process_ngs.utils import AnalysisProject
-from .illumina import QCReporter
+from ..illumina import QCReporter
 
 """
 qc_reporter2
