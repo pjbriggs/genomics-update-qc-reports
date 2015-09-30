@@ -24,10 +24,12 @@ setup(
                 'qcreport.cli'],
     entry_points = { 'console_scripts': [
         'qcreporter2 = qcreport.cli.qcreporter2:main',
-        'uboxplot = qcreport.cli.uboxplot:main',]
+        'uboxplot = qcreport.cli.uboxplot:main',
+        'screenplot = qcreport.cli.screenplot:main',]
     },
     license = 'Artistic License',
     install_requires = ['pillow',
+                        'matplotlib',
                         'genomics',
                         'auto_process_ngs'],
     test_suite = 'nose.collector',
