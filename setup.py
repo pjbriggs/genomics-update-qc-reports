@@ -22,7 +22,8 @@ setup(
     maintainer_email = 'peter.briggs@manchester.ac.uk',
     packages = ['qcreport',],
     entry_points = { 'console_scripts': [
-        'qcreporter2 = qcreport.cli:main',]
+        'qcreporter2 = qcreport.cli.qcreporter2:main',
+        'uboxplot = qcreport.cli.uboxplot:main',]
     },
     license = 'Artistic License',
     install_requires = ['pillow',
