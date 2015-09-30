@@ -6,7 +6,7 @@ from .. import get_version
 import sys
 import os
 import optparse
-from ..illumina import uboxplot
+from ..boxplots import uboxplot
 
 def main():
     # Process command line
