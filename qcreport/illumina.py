@@ -4,6 +4,7 @@
 
 import os
 from auto_process_ngs.utils import AnalysisFastq
+from bcftbx.TabFile import TabFile
 from bcftbx.qc.report import strip_ngs_extensions
 from bcftbx.FASTQFile import FastqIterator
 from bcftbx.htmlpagewriter import HTMLPageWriter
@@ -31,7 +32,11 @@ class QCReporter:
         self._samples = []
         self._stats_file = os.path.join(os.path.dirname(self._project.dirn),
                                         'statistics.info')
-        self._stats = FastqStats(self._stats_file)
+        try:
+            self._stats = FastqStats(self._stats_file)
+        except IOError:
+            print "Failed to load stats"
+            self._stats = None
         for sample in self._project.samples:
             self._samples.append(QCSample(sample))
 
@@ -150,7 +155,7 @@ class QCFastqSet:
         """
         self._fastqs = list(fastqs)
 
-class FastqStats(bcftbx.TabFile):
+class FastqStats(TabFile):
     """
     Class for looking up statistics on Fastq files
 
@@ -164,7 +169,7 @@ class FastqStats(bcftbx.TabFile):
 
         """
         self._stats_file = stats_file
-        bcftbx.TabFile.__init__(self._stats_file)
+        TabFile.__init__(self,self._stats_file)
 
 #######################################################################
 # Functions

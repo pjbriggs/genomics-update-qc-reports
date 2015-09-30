@@ -3,7 +3,7 @@
 #     qcreporter2.py: generate report file for Illumina NGS qc runs
 #     Copyright (C) University of Manchester 2015 Peter Briggs
 #
-__version__ = "0.0.0"
+from . import get_version
 
 #######################################################################
 # Imports
@@ -12,7 +12,7 @@ __version__ = "0.0.0"
 import os
 import optparse
 from auto_process_ngs.utils import AnalysisProject
-from qcreport.illumina import QCReporter
+from .illumina import QCReporter
 
 """
 qc_reporter2
@@ -23,11 +23,10 @@ qc_reporter2
 # Main program
 #######################################################################
 
-if __name__ == '__main__':
-
+def main():
     # Deal with command line
     p = optparse.OptionParser(usage="%prog DIR [DIR]",
-                              version="%prog "+__version__,
+                              version="%prog "+get_version(),
                               description="Generate QC report for each directory "
                               "DIR")
     opts,args = p.parse_args()
@@ -44,6 +43,8 @@ if __name__ == '__main__':
         print "%d samples | %d fastqs" % (len(p.samples),len(p.fastqs))
         qc = QCReporter(p).report()
 
+if __name__ == '__main__':
+    main()
     
             
         
