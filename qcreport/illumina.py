@@ -29,6 +29,9 @@ class QCReporter:
         """
         self._project = project
         self._samples = []
+        self._stats_file = os.path.join(os.path.dirname(self._project.dirn),
+                                        'statistics.info')
+        self._stats = FastqStats(self._stats_file)
         for sample in self._project.samples:
             self._samples.append(QCSample(sample))
 
@@ -147,7 +150,7 @@ class QCFastqSet:
         """
         self._fastqs = list(fastqs)
 
-class FastqStats:
+class FastqStats(bcftbx.TabFile):
     """
     Class for looking up statistics on Fastq files
 
@@ -161,6 +164,7 @@ class FastqStats:
 
         """
         self._stats_file = stats_file
+        bcftbx.TabFile.__init__(self._stats_file)
 
 #######################################################################
 # Functions

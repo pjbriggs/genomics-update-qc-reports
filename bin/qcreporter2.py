@@ -39,6 +39,9 @@ if __name__ == '__main__':
         project_name = os.path.basename(d)
         dir_path = os.path.abspath(d)
         p = AnalysisProject(project_name,dir_path)
+        print "Project: %s" % p.name
+        print "-"*(len('Project: ')+len(p.name))
+        print "%d samples | %d fastqs" % (len(p.samples),len(p.fastqs))
         qc = QCReporter(p).report()
 
     
