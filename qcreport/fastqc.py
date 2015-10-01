@@ -141,10 +141,11 @@ def ufastqcplot(summary_file,outfile):
         code = status_codes[fastqc_summary.status(m)]
         # Make the mark
         x = code['index']*10 + 1
-        y = 4*nmodules - im*4 - 3
+        #y = 4*nmodules - im*4 - 3
+        y = im*4 + 1
         for i in xrange(x,x+8):
             for j in xrange(y,y+3):
-                print "%d %d" % (i,j)
+                #print "%d %d" % (i,j)
                 pixels[i,j] = code['rgb']
     # Output the plot to file
     print "Saving to %s" % outfile
