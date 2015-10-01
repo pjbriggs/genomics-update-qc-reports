@@ -9,7 +9,9 @@ from bcftbx.TabFile import TabFile
 from bcftbx.qc.report import strip_ngs_extensions
 from bcftbx.htmlpagewriter import HTMLPageWriter
 from bcftbx.htmlpagewriter import PNGBase64Encoder
-from .boxplots import uboxplot_from_fastq as uboxplot
+from .boxplots import uboxplot_from_fastq
+from .boxplots import uboxplot_from_fastqc_data
+from .fastqc import ufastqcplot
 
 #######################################################################
 # Classes
@@ -32,6 +34,7 @@ class QCReporter:
         self._samples = []
         self._stats_file = os.path.join(os.path.dirname(self._project.dirn),
                                         'statistics.info')
+        self._qc_dir = self._project.qc_dir
         try:
             self._stats = FastqStats(self._stats_file)
         except IOError:
@@ -69,12 +72,12 @@ class QCReporter:
         # Write summary table
         summary = ReportTable(('Sample',))
         if self.paired_end:
-            summary.append_columns('Fastq (R1)','Fastq (R2)')
+            summary.append_columns('Fastqs')
         else:
             summary.append_columns('Fastq')
-        summary.append_columns('Reads','R1')
+        summary.append_columns('Reads','FastQC(R1)','Boxplot(R1)')
         if self.paired_end:
-            summary.append_columns('R2')
+            summary.append_columns('FastQC(R2)','Boxplot(R2)')
         # Write entries for samples, fastqs etc
         current_sample = None
         for sample in self._samples:
@@ -84,37 +87,80 @@ class QCReporter:
                 idx = summary.add_row(Sample=sample_name)
                 # Fastq name(s)
                 if self.paired_end:
-                    summary.set_value(idx,'Fastq (R1)',
-                                      os.path.basename(fq_pair[0]))
-                    summary.set_value(idx,'Fastq (R2)',
-                                      os.path.basename(fq_pair[1]))
+                    summary.set_value(idx,'Fastqs',
+                                      "%s<br />%s" %
+                                      (os.path.basename(fq_pair[0]),
+                                       os.path.basename(fq_pair[1])))
                 else:
                     summary.set_value(idx,'Fastq',
                                       os.path.basename(fq_pair[0]))
                 # Number of reads
-                # Little boxplot(s)
-                # R1 boxplot
-                tmp_boxplot = "tmp.%s.uboxplot.png" % os.path.basename(fq_pair[0])
-                uboxplot(fq_pair[0],tmp_boxplot)
-                uboxplot64encoded = "data:image/png;base64," + \
-                                    PNGBase64Encoder().encodePNG(tmp_boxplot)
-                summary.set_value(idx,'R1',
-                                  "<img src='%s' />" % uboxplot64encoded)
-                os.remove(tmp_boxplot)
-                # R2 boxplot
+                summary.set_value(idx,'Reads','?')
+                # Locate FastQC outputs for R1
+                fastqc_dir = fastqc_output(fq_pair[0])[0]
+                fastqc_data = os.path.join(self._qc_dir,fastqc_dir,
+                                           'fastqc_data.txt')
+                fastqc_summary =  os.path.join(self._qc_dir,fastqc_dir,
+                                               'summary.txt')
+                # Boxplot
+                ##summary.set_value(idx,'Boxplot(R1)',"<img src='%s' />" %
+                ##                  self._uboxplot(fq_pair[0]))
+                summary.set_value(idx,'Boxplot(R1)',"<img src='%s' />" %
+                                  self._uboxplot(fastqc_data))
+                # FastQC summary plot
+                summary.set_value(idx,
+                                  'FastQC(R1)',"<img src='%s' />" %
+                                  self._ufastqcplot(fastqc_summary))
+                # R2
                 if self.paired_end:
-                    tmp_boxplot = "tmp.%s.uboxplot.png" % os.path.basename(fq_pair[1])
-                    uboxplot(fq_pair[1],tmp_boxplot)
-                    uboxplot64encoded = "data:image/png;base64," + \
-                                        PNGBase64Encoder().encodePNG(tmp_boxplot)
+                    # Locate FastQC outputs for R2
+                    fastqc_dir = fastqc_output(fq_pair[1])[0]
+                    fastqc_data = os.path.join(self._qc_dir,fastqc_dir,
+                                               'fastqc_data.txt')
+                    fastqc_summary =  os.path.join(self._qc_dir,fastqc_dir,
+                                                   'summary.txt')
+                    # Boxplot
+                    ##summary.set_value(idx,'Boxplot(R2)',"<img src='%s' />" %
+                    ##                  self._uboxplot(fq_pair[1]))
+                    summary.set_value(idx,'Boxplot(R2)',"<img src='%s' />" %
+                                      self._uboxplot(fastqc_data))
+                    # FastQC summary plot
                     summary.set_value(idx,
-                                      'R2',"<img src='%s' />" % uboxplot64encoded)
-                    os.remove(tmp_boxplot)
+                                      'FastQC(R2)',"<img src='%s' />" %
+                                      self._ufastqcplot(fastqc_summary))
                 # Reset sample name for remaining pairs
                 sample_name = '&nbsp;'
         # Write the table
         html.add(summary.html(css_class="summary"))
         html.write("%s.qcreport.html" % self.name)
+
+    #def _uboxplot(self,fastq):
+    def _uboxplot(self,fastqc_data):
+        """
+        Generate Base64 encoded micro boxplot for FASTQ quality
+
+        """
+        #tmp_boxplot = "tmp.%s.uboxplot.png" % os.path.basename(fastq)
+        #uboxplot_from_fastq(fastq,tmp_boxplot)
+        tmp_boxplot = "tmp.%s.uboxplot.png" % os.path.basename(fastqc_data)
+        uboxplot_from_fastqc_data(fastqc_data,tmp_boxplot)
+        uboxplot64encoded = "data:image/png;base64," + \
+                            PNGBase64Encoder().encodePNG(tmp_boxplot)
+        os.remove(tmp_boxplot)
+        return uboxplot64encoded
+
+    def _ufastqcplot(self,fastqc_summary):
+        """
+        Generate Base64 encoded micro FastQC summary plot
+
+        """
+        tmp_plot = "tmp.%s.ufastqcplot.png" % \
+                   os.path.basename(fastqc_summary)
+        ufastqcplot(fastqc_summary,tmp_plot)
+        ufastqcplot64encoded = "data:image/png;base64," + \
+                               PNGBase64Encoder().encodePNG(tmp_plot)
+        os.remove(tmp_plot)
+        return ufastqcplot64encoded
 
 class QCSample:
     """
@@ -326,7 +372,7 @@ def fastqc_output(fastq):
     Given a Fastq file name, the outputs from FastQC will look
     like:
 
-    - {FASTQ}_fastqc
+    - {FASTQ}_fastqc/
     - {FASTQ}_fastqc.html
     - {FASTQ}_fastqc.zip
 
