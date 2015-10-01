@@ -8,7 +8,7 @@ from bcftbx.TabFile import TabFile
 from bcftbx.qc.report import strip_ngs_extensions
 from bcftbx.htmlpagewriter import HTMLPageWriter
 from bcftbx.htmlpagewriter import PNGBase64Encoder
-from .boxplots import uboxplot
+from .boxplots import uboxplot_from_fastq as uboxplot
 
 #######################################################################
 # Classes
