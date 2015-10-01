@@ -12,6 +12,7 @@ from bcftbx.htmlpagewriter import PNGBase64Encoder
 from .boxplots import uboxplot_from_fastq
 from .boxplots import uboxplot_from_fastqc_data
 from .fastqc import ufastqcplot
+from .screens import uscreenplot
 
 #######################################################################
 # Classes
@@ -75,7 +76,7 @@ class QCReporter:
             summary.append_columns('Fastqs')
         else:
             summary.append_columns('Fastq')
-        summary.append_columns('Reads','FastQC(R1)','Boxplot(R1)')
+        summary.append_columns('Reads','FastQC(R1)','Boxplot(R1)','Screen(R1)')
         if self.paired_end:
             summary.append_columns('FastQC(R2)','Boxplot(R2)')
         # Write entries for samples, fastqs etc
@@ -111,6 +112,13 @@ class QCReporter:
                 summary.set_value(idx,
                                   'FastQC(R1)',"<img src='%s' />" %
                                   self._ufastqcplot(fastqc_summary))
+                # Screens
+                screen_files = []
+                for name in ('model_organisms','other_organisms','rRNA',):
+                    png,txt = fastq_screen_output(fq_pair[0],name)
+                    screen_files.append(os.path.join(self._qc_dir,txt))
+                    summary.set_value(idx,'Screen(R1)',"<img src='%s' />" %
+                                      self._uscreenplot(screen_files))
                 # R2
                 if self.paired_end:
                     # Locate FastQC outputs for R2
@@ -161,6 +169,17 @@ class QCReporter:
                                PNGBase64Encoder().encodePNG(tmp_plot)
         os.remove(tmp_plot)
         return ufastqcplot64encoded
+
+    def _uscreenplot(self,fastq_screens):
+        """
+        """
+        tmp_plot = "tmp.%s.ufastqscreenplot.png" % \
+                   os.path.basename(fastq_screens[0])
+        uscreenplot(fastq_screens,tmp_plot,threshold=0.0)
+        uscreenplot64encoded = "data:image/png;base64," + \
+                               PNGBase64Encoder().encodePNG(tmp_plot)
+        os.remove(tmp_plot)
+        return uscreenplot64encoded
 
 class QCSample:
     """

@@ -67,8 +67,10 @@ def screenplot(screen_files,outfile,threshold=5.0):
 
     Arguments:
       screen_files (list): list of paths to one or more
-       ...screen.txt files from FastqScreen
+        ...screen.txt files from FastqScreen
       outfile (str): path to output file,outfile
+      threshold (float): minimum percentage of mapped
+        reads (below which library is excluded)
 
     """
     # Read in the screen data
@@ -91,8 +93,8 @@ def screenplot(screen_files,outfile,threshold=5.0):
                [r['Library'] for r in screen_data])
     plt.legend(loc=4)
     plt.savefig(outfile)
-    for r in screen_data:
-        print r['Library']
+    #for r in screen_data:
+    #    print r['Library']
 
 def uscreenplot(screen_files,outfile,threshold=5.0):
     """
@@ -100,30 +102,48 @@ def uscreenplot(screen_files,outfile,threshold=5.0):
 
     Arguments:
       screen_files (list): list of paths to one or more
-       ...screen.txt files from FastqScreen
+        ...screen.txt files from FastqScreen
       outfile (str): path to output file,outfile
+      threshold (float): minimum percentage of mapped
+        reads (below which library is excluded)
 
     """
     # Read in the screen data
     screen_data = FastqscreenData(screen_files)
-    # Sort the data by most to least mapped
-    screen_data.sort(lambda line: line['%Unmapped'])
-    raise NotImplementedError("uscreenplot not implemented yet")
-
-    # Initialise output image instance
-    #img = Image.new('RGB',(len(quality_per_base),40),"white")
-    #pixels = img.load()
-    # Draw onto the image
-    ##for j in xrange(p10,p90):
-    ##    # 10th-90th percentile coloured cyan
-    ##    pixels[pos,40-j] = (0,255,255)
-    ##    for j in xrange(q25,q75):
-    ##        # Interquartile range coloured yellow
-    ##        pixels[pos,40-j] = (255,255,0)
-    ##    # Mean coloured black
-    ##pixels[pos,40-int(mean)] = (0,0,0)
-
-    # Output the screen to file
-    ##print "Saving to %s" % outfile
-    ##img.save(outfile)
-    ##return outfile
+    ### Sort the data by most to least mapped
+    ##screen_data.sort(lambda line: line['%Unmapped'])
+    # Filter on threshold
+    screen_data = filter(lambda x: x['%Unmapped'] < (100.0-threshold),
+                         screen_data)
+    # Make a small stacked bar chart
+    barwidth = 5
+    height = len(screen_data)*(barwidth + 1)
+    img = Image.new('RGB',(50,height),"white")
+    pixels = img.load()
+    # Draw a box around the plot
+    box_color = (145,145,145)
+    for i in xrange(50):
+        pixels[i,0] = box_color
+        pixels[i,height-1] = box_color
+    for j in xrange(height):
+        pixels[0,j] = box_color
+        pixels[50-1,j] = box_color
+    # Draw the stacked bars for each library
+    libraries = [r['Library'] for r in screen_data]
+    for n,library in enumerate(libraries):
+        screen = filter(lambda x: x['Library'] == library,screen_data)[0]
+        y = n*(barwidth+1) + 1
+        x = 0
+        for mapping,rgb in (('%One_hit_one_library',(0,0,153)),
+                            ('%Multiple_hits_one_library',(0,0,255)),
+                            ('%One_hit_multiple_libraries',(255,0,0)),
+                            ('%Multiple_hits_multiple_libraries',(128,0,0))):
+            npx = int(screen[mapping]/2.0)
+            for i in xrange(x,x+npx):
+                for j in xrange(barwidth):
+                    pixels[i,y+j] = rgb
+            x += npx
+    # Output the plot to file
+    print "Saving to %s" % outfile
+    img.save(outfile)
+    return outfile
