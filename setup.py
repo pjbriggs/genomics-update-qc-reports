@@ -25,7 +25,8 @@ setup(
     entry_points = { 'console_scripts': [
         'qcreporter2 = qcreport.cli.qcreporter2:main',
         'uboxplot = qcreport.cli.uboxplot:main',
-        'screenplot = qcreport.cli.screenplot:main',]
+        'screenplot = qcreport.cli.screenplot:main',
+        'fastqcplot = qcreport.cli.fastqcplot:main',]
     },
     license = 'Artistic License',
     install_requires = ['pillow',
