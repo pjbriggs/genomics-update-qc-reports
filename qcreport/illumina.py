@@ -2,6 +2,7 @@
 #
 # illuminaqc library
 
+import sys
 import os
 from auto_process_ngs.utils import AnalysisFastq
 from bcftbx.TabFile import TabFile
@@ -66,36 +67,39 @@ class QCReporter:
                         "                   padding: 2px 5px;\n"
                         "                   border-bottom: solid 1px lightgray; }")
         # Write summary table
-        html.add("<table class='summary'>")
-        html.add("<tr><th>Sample</th>")
+        summary = ReportTable(('Sample',))
         if self.paired_end:
-            html.add("<th>Fastq (R1)</th><th>Fastq (R2)</th>")
+            summary.append_columns('Fastq (R1)','Fastq (R2)')
         else:
-            html.add("<th>Fastq</th>")
-        html.add("<th>Reads</th><th>R1</th>")
+            summary.append_columns('Fastq')
+        summary.append_columns('Reads','R1')
         if self.paired_end:
-            html.add("<th>R2</th>")
-        html.add("</tr>")
+            summary.append_columns('R2')
         # Write entries for samples, fastqs etc
         current_sample = None
         for sample in self._samples:
             sample_name = sample.name
             for fq_pair in sample.fastq_pairs:
                 # Sample name for first pair only
-                html.add("<tr><td>%s</td>" % sample_name)
+                idx = summary.add_row(Sample=sample_name)
                 # Fastq name(s)
-                html.add("<td>%s</td>" % os.path.basename(fq_pair[0]))
                 if self.paired_end:
-                    html.add("<td>%s</td>" % os.path.basename(fq_pair[1]))
+                    summary.set_value(idx,'Fastq (R1)',
+                                      os.path.basename(fq_pair[0]))
+                    summary.set_value(idx,'Fastq (R2)',
+                                      os.path.basename(fq_pair[1]))
+                else:
+                    summary.set_value(idx,'Fastq',
+                                      os.path.basename(fq_pair[0]))
                 # Number of reads
-                html.add("<td>?</td>")
                 # Little boxplot(s)
                 # R1 boxplot
                 tmp_boxplot = "tmp.%s.uboxplot.png" % os.path.basename(fq_pair[0])
                 uboxplot(fq_pair[0],tmp_boxplot)
                 uboxplot64encoded = "data:image/png;base64," + \
                                     PNGBase64Encoder().encodePNG(tmp_boxplot)
-                html.add("<td><img src='%s' /></td>" % uboxplot64encoded)
+                summary.set_value(idx,'R1',
+                                  "<img src='%s' />" % uboxplot64encoded)
                 os.remove(tmp_boxplot)
                 # R2 boxplot
                 if self.paired_end:
@@ -103,14 +107,13 @@ class QCReporter:
                     uboxplot(fq_pair[1],tmp_boxplot)
                     uboxplot64encoded = "data:image/png;base64," + \
                                         PNGBase64Encoder().encodePNG(tmp_boxplot)
-                    html.add("<td><img src='%s' /></td>" % uboxplot64encoded)
+                    summary.set_value(idx,
+                                      'R2',"<img src='%s' />" % uboxplot64encoded)
                     os.remove(tmp_boxplot)
-                # End of line
-                html.add("</tr>")
                 # Reset sample name for remaining pairs
                 sample_name = '&nbsp;'
-        # Close off table
-        html.add("</table>")
+        # Write the table
+        html.add(summary.html(css_class="summary"))
         html.write("%s.qcreport.html" % self.name)
 
 class QCSample:
@@ -169,6 +172,88 @@ class FastqStats(TabFile):
         """
         self._stats_file = stats_file
         TabFile.__init__(self,self._stats_file)
+
+class ReportTable:
+    """
+    Utility class to help with assembling table for output
+
+    """
+    def __init__(self,columns):
+        """
+        Create a new ReportTable instance
+
+        """
+        self._columns = [x for x in columns]
+        self._rows = []
+
+    def append_columns(self,*names):
+        """
+        Add a new columns to the table
+
+        """
+        for name in names:
+            if name in self._columns:
+                raise KeyError("Column called '%s' already defined"
+                               % name)
+            self._columns.append(name)
+
+    def add_row(self,**kws):
+        """
+        Add a row to the table
+
+        """
+        self._rows.append({})
+        n = len(self._rows)-1
+        for key in kws:
+            self.set_value(n,key,kws[key])
+        return n
+
+    def set_value(self,row,key,value):
+        """
+        Set the value of a field in a row
+
+        """
+        if key not in self._columns:
+            raise KeyError("Key '%s' not found" % key)
+        self._rows[row][key] = value
+
+    def html(self,css_class=None,css_id=None):
+        """
+        Generate HTML version of the table contents
+
+        """
+        html = []
+        # Opening tag
+        table_tag = []
+        table_tag.append("<table")
+        if css_id is not None:
+            table_tag.append(" id='%s'" % css_id)
+        if css_class is not None:
+            table_tag.append(" class='%s'" % css_class)
+        table_tag.append(">\n")
+        html.append(''.join(table_tag))
+        # Header
+        header = []
+        header.append("<tr>")
+        for col in self._columns:
+            header.append("<th>%s</th>" % col)
+        header.append("</tr>")
+        html.append(''.join(header))
+        # Body
+        for row in self._rows:
+            line = []
+            line.append("<tr>")
+            for col in self._columns:
+                try:
+                    value = row[col]
+                except KeyError:
+                    value = '&nbsp;'
+                line.append("<td>%s</td>" % value)
+            line.append("</tr>")
+            html.append(''.join(line))
+        # Finish
+        html.append("</table>")
+        return '\n'.join(html)
 
 #######################################################################
 # Functions
