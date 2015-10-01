@@ -219,6 +219,14 @@ def uboxplot(fastq_stats,outfile):
     # Initialise output image instance
     img = Image.new('RGB',(fastq_stats.nbases,40),"white")
     pixels = img.load()
+    # Draw a box around the outside
+    box_color = (145,145,145)
+    for i in xrange(fastq_stats.nbases):
+        pixels[i,0] = box_color
+        pixels[i,40-1] = box_color
+    for j in xrange(40):
+        pixels[0,j] = box_color
+        pixels[fastq_stats.nbases-1,j] = box_color
     # For each base position determine stats
     for i in xrange(fastq_stats.nbases):
         #print "Position: %d" % i
