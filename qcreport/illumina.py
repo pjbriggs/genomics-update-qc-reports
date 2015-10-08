@@ -13,6 +13,7 @@ from .boxplots import uboxplot_from_fastq
 from .boxplots import uboxplot_from_fastqc_data
 from .fastqc import ufastqcplot
 from .screens import uscreenplot
+from .screens import multiscreenplot
 
 #######################################################################
 # Classes
@@ -63,7 +64,7 @@ class QCReporter:
         # Styles
         html.addCSSRule("table.summary { border: solid 1px grey;\n"
                         "                background-color: white;\n"
-                        "                font-size: 90% }")
+                        "                font-size: 80% }")
         html.addCSSRule("table.summary th { background-color: grey;\n"
                         "                   color: white;\n"
                         "                   padding: 2px 5px; }")
@@ -78,7 +79,7 @@ class QCReporter:
             summary.append_columns('Fastq')
         summary.append_columns('Reads','FastQC(R1)','Boxplot(R1)','Screen(R1)')
         if self.paired_end:
-            summary.append_columns('FastQC(R2)','Boxplot(R2)')
+            summary.append_columns('FastQC(R2)','Boxplot(R2)','Screen(R2)')
         # Write entries for samples, fastqs etc
         current_sample = None
         for sample in self._samples:
@@ -128,14 +129,19 @@ class QCReporter:
                     fastqc_summary =  os.path.join(self._qc_dir,fastqc_dir,
                                                    'summary.txt')
                     # Boxplot
-                    ##summary.set_value(idx,'Boxplot(R2)',"<img src='%s' />" %
-                    ##                  self._uboxplot(fq_pair[1]))
                     summary.set_value(idx,'Boxplot(R2)',"<img src='%s' />" %
                                       self._uboxplot(fastqc_data))
                     # FastQC summary plot
                     summary.set_value(idx,
                                       'FastQC(R2)',"<img src='%s' />" %
                                       self._ufastqcplot(fastqc_summary))
+                    # Screens
+                    screen_files = []
+                    for name in ('model_organisms','other_organisms','rRNA',):
+                        png,txt = fastq_screen_output(fq_pair[1],name)
+                        screen_files.append(os.path.join(self._qc_dir,txt))
+                        summary.set_value(idx,'Screen(R2)',"<img src='%s' />" %
+                                          self._uscreenplot(screen_files))
                 # Reset sample name for remaining pairs
                 sample_name = '&nbsp;'
         # Write the table
@@ -175,7 +181,7 @@ class QCReporter:
         """
         tmp_plot = "tmp.%s.ufastqscreenplot.png" % \
                    os.path.basename(fastq_screens[0])
-        uscreenplot(fastq_screens,tmp_plot,threshold=0.0)
+        multiscreenplot(fastq_screens,tmp_plot)
         uscreenplot64encoded = "data:image/png;base64," + \
                                PNGBase64Encoder().encodePNG(tmp_plot)
         os.remove(tmp_plot)

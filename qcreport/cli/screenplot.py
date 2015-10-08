@@ -7,6 +7,7 @@ import sys
 import os
 import optparse
 from ..screens import uscreenplot
+from ..screens import multiscreenplot
 from ..screens import screenplot
 
 def main():
@@ -28,7 +29,8 @@ def main():
     ##outfile = os.path.splitext(os.path.basename(fq))[0] + '.png'
     outfile = 'ex.png'
     if opts.micro:
-        uscreenplot(screen_files,outfile,threshold=opts.threshold)
+        #uscreenplot(screen_files,outfile,threshold=opts.threshold)
+        multiscreenplot(screen_files,outfile)
     else:
         screenplot(screen_files,outfile,threshold=opts.threshold)
 
