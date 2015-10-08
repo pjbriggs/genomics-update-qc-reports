@@ -11,6 +11,7 @@ from bcftbx.htmlpagewriter import HTMLPageWriter
 from bcftbx.htmlpagewriter import PNGBase64Encoder
 from .boxplots import uboxplot_from_fastq
 from .boxplots import uboxplot_from_fastqc_data
+from .fastqc import FastqcData
 from .fastqc import ufastqcplot
 from .screens import uscreenplot
 from .screens import multiscreenplot
@@ -96,17 +97,17 @@ class QCReporter:
                 else:
                     summary.set_value(idx,'Fastq',
                                       os.path.basename(fq_pair[0]))
-                # Number of reads
-                summary.set_value(idx,'Reads','?')
                 # Locate FastQC outputs for R1
                 fastqc_dir = fastqc_output(fq_pair[0])[0]
                 fastqc_data = os.path.join(self._qc_dir,fastqc_dir,
                                            'fastqc_data.txt')
                 fastqc_summary =  os.path.join(self._qc_dir,fastqc_dir,
                                                'summary.txt')
+                # Number of reads
+                nreads = FastqcData(fastqc_data).\
+                         basic_statistics('Total Sequences')
+                summary.set_value(idx,'Reads',nreads)
                 # Boxplot
-                ##summary.set_value(idx,'Boxplot(R1)',"<img src='%s' />" %
-                ##                  self._uboxplot(fq_pair[0]))
                 summary.set_value(idx,'Boxplot(R1)',"<img src='%s' />" %
                                   self._uboxplot(fastqc_data))
                 # FastQC summary plot

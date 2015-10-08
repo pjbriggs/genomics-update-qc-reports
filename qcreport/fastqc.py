@@ -89,6 +89,80 @@ class FastqcSummary(TabFile):
         return [r['Module'] for r in filter(lambda x: x['Status'] == 'FAIL',
                                             self)]
 
+class FastqcData:
+    """
+    Class representing data from a Fastqc data file
+
+    Reads in the data from a ``fastqc_data.txt`` file
+    and makes it available programmatically.
+
+    To create a new FastqcData instance:
+
+    >>> fqc = FastqcData('fastqc_data.txt')
+
+    To access a field in the 'Basic Statistics' module:
+
+    >>> nreads = fqc.basic_statistics('Total Sequences')
+
+    """
+    def __init__(self,data_file):
+        """
+        Create a new FastqcData instance
+
+        Arguments:
+          data_file (str): path to a ``fastqc_data.txt``
+            file which will be read in and processed
+
+        """
+        self._fastqc_version = None
+        self._modules = {}
+        if data_file:
+            fastqc_module = None
+            with open(data_file,'r') as fp:
+                for line in fp:
+                    line = line.strip()
+                    if fastqc_module is None:
+                        if line.startswith('##FastQC'):
+                            self._fastqc_version = line.split()[-1]
+                        elif line.startswith('>>'):
+                            fastqc_module = line.split('\t')[0][2:]
+                            self._modules[fastqc_module] = []
+                    elif line.startswith('>>END_MODULE'):
+                        fastqc_module = None
+                    else:
+                        self._modules[fastqc_module].append(line)
+
+    def basic_statistics(self,measure):
+        """
+        Access a data item in the ``Basic Statistics`` section
+
+        Possible values include:
+
+        - Filename
+        - File type
+        - Encoding
+        - Total Sequences
+        - Sequences flagged as poor quality
+        - Sequence length
+        - %GC
+
+        Arguments:
+          measure (str): key corresponding to a 'measure'
+            in the ``Basic Statistics`` section.
+
+        Returns:
+          String: value of the requested 'measure'
+
+        Raises:
+          KeyError: if measure is not found.
+
+        """
+        for line in self._modules['Basic Statistics']:
+            key,value = line.split('\t')
+            if key == measure:
+                return value
+        raise KeyError("No key '%s'" % key)
+
 def ufastqcplot(summary_file,outfile):
     """
     Make a 'micro' summary plot of FastQC output
