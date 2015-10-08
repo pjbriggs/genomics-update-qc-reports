@@ -4,6 +4,19 @@
 from bcftbx.FASTQFile import FastqIterator
 from PIL import Image
 
+# Colours taken from http://www.rapidtables.com/web/color/RGB_Color.htm
+RGB_COLORS = {
+    'black': (0,0,0),
+    'blue': (0,0,255),
+    'cyan': (0,255,255),
+    'darkyellow1': (204,204,0),
+    'grey': (145,145,145),
+    'lightgrey': (211,211,211),
+    'orange': (255,165,0),
+    'red': (255,0,0),
+    'yellow': (255,255,0),
+}
+
 class FastqQualityStats:
     """
     Class for storing per-base quality stats from a FASTQ
@@ -220,7 +233,7 @@ def uboxplot(fastq_stats,outfile):
     img = Image.new('RGB',(fastq_stats.nbases,40),"white")
     pixels = img.load()
     # Draw a box around the outside
-    box_color = (145,145,145)
+    box_color = RGB_COLORS['grey']
     for i in xrange(fastq_stats.nbases):
         pixels[i,0] = box_color
         pixels[i,40-1] = box_color
@@ -232,12 +245,14 @@ def uboxplot(fastq_stats,outfile):
         #print "Position: %d" % i
         for j in xrange(fastq_stats.p10[i],fastq_stats.p90[i]):
             # 10th-90th percentile coloured cyan
-            pixels[i,40-j] = (0,255,255)
+            pixels[i,40-j] = RGB_COLORS['lightgrey']
         for j in xrange(fastq_stats.q25[i],fastq_stats.q75[i]):
             # Interquartile range coloured yellow
-            pixels[i,40-j] = (255,255,0)
+            pixels[i,40-j] = RGB_COLORS['darkyellow1']
+        # Median coloured red
+        pixels[i,40-int(fastq_stats.median[i])] = RGB_COLORS['red']
         # Mean coloured black
-        pixels[i,40-int(fastq_stats.mean[i])] = (0,0,0)
+        pixels[i,40-int(fastq_stats.mean[i])] = RGB_COLORS['blue']
     # Output the boxplot to file
     print "Saving to %s" % outfile
     img.save(outfile)
