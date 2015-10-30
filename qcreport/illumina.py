@@ -7,14 +7,10 @@ import os
 from auto_process_ngs.utils import AnalysisFastq
 from bcftbx.TabFile import TabFile
 from bcftbx.qc.report import strip_ngs_extensions
-from bcftbx.htmlpagewriter import HTMLPageWriter
 from bcftbx.htmlpagewriter import PNGBase64Encoder
 from .docwriter import Document
 from .docwriter import Table
-from .boxplots import uboxplot_from_fastq
-from .boxplots import uboxplot_from_fastqc_data
-from .fastqc import FastqcData
-from .fastqc import ufastqcplot
+from .fastqc import Fastqc
 from .screens import uscreenplot
 from .screens import multiscreenplot
 
@@ -64,6 +60,29 @@ class QCReporter:
         # Initialise report
         report = Document(title="%s: QC report" % self.name)
         # Styles
+        report.add_css_rule("h1 { background-color: #42AEC2;\n"
+                            "     color: white;\n"
+                            "     padding: 5px 10px; }")
+        report.add_css_rule("h2 { background-color: #8CC63F;\n"
+                            "     color: white;\n"
+                            "     display: inline-block;\n"
+                            "     padding: 5px 15px;\n"
+                            "     margin: 0;\n"
+                            "     border-top-left-radius: 20;\n"
+                            "     border-bottom-right-radius: 20; }")
+        report.add_css_rule("h3 { background-color: grey;\n"
+                            "     color: white;\n"
+                            "     display: inline-block;\n"
+                            "     padding: 5px 15px;\n"
+                            "     margin: 0;\n"
+                            "     border-top-left-radius: 20;\n"
+                            "     border-bottom-right-radius: 20; }")
+        report.add_css_rule(".sample { margin: 10 10;\n"
+                            "          border: solid 2px #8CC63F;\n"
+                            "          padding: 0;\n"
+                            "          background-color: #ffe;\n"
+                            "          border-top-left-radius: 25;\n"
+                            "          border-bottom-right-radius: 25; }")
         report.add_css_rule("table.summary { border: solid 1px grey;\n"
                             "                background-color: white;\n"
                             "                font-size: 80% }")
@@ -73,6 +92,20 @@ class QCReporter:
         report.add_css_rule("table.summary td { text-align: right; \n"
                             "                   padding: 2px 5px;\n"
                             "                   border-bottom: solid 1px lightgray; }")
+        report.add_css_rule("table.fastqc_summary span.PASS { font-weight: bold;\n"
+                            "                                 color: green; }")
+        report.add_css_rule("table.fastqc_summary span.WARN { font-weight: bold;\n"
+                            "                                 color: orange; }")
+        report.add_css_rule("table.fastqc_summary span.FAIL { font-weight: bold;\n"
+                            "                                 color: red; }")
+        # Rules for printing
+        report.add_css_rule("@media print\n"
+                            "{\n"
+                            "a { color: black; text-decoration: none; }\n"
+                            ".sample { page-break-before: always; }\n"
+                            "table th { border-bottom: solid 1px lightgray; }\n"
+                            ".no_print { display: none; }\n"
+                            "}")
         # Build summary section & table
         summary = report.add_section("Summary")
         summary_tbl = Table(('sample',),sample='Sample')
@@ -93,6 +126,8 @@ class QCReporter:
         current_sample = None
         for sample in self._samples:
             sample_name = sample.name
+            sample_report = report.add_section("%s" % sample_name)
+            sample_report.add_css_classes('sample')
             for fq_pair in sample.fastq_pairs:
                 # Sample name for first pair only
                 idx = summary_tbl.add_row(sample=sample_name)
@@ -106,22 +141,18 @@ class QCReporter:
                     summary_tbl.set_value(idx,'fastq',
                                           os.path.basename(fq_pair[0]))
                 # Locate FastQC outputs for R1
-                fastqc_dir = fastqc_output(fq_pair[0])[0]
-                fastqc_data = os.path.join(self._qc_dir,fastqc_dir,
-                                           'fastqc_data.txt')
-                fastqc_summary =  os.path.join(self._qc_dir,fastqc_dir,
-                                               'summary.txt')
+                fastqc = Fastqc(os.path.join(self._qc_dir,
+                                             fastqc_output(fq_pair[0])[0]))
                 # Number of reads
-                nreads = FastqcData(fastqc_data).\
-                         basic_statistics('Total Sequences')
+                nreads = fastqc.data.basic_statistics('Total Sequences')
                 summary_tbl.set_value(idx,'reads',nreads)
                 # Boxplot
                 summary_tbl.set_value(idx,'boxplot_r1',"<img src='%s' />" %
-                                      self._uboxplot(fastqc_data))
+                                      fastqc.data.uboxplot())
                 # FastQC summary plot
                 summary_tbl.set_value(idx,
                                       'fastqc_r1',"<img src='%s' />" %
-                                      self._ufastqcplot(fastqc_summary))
+                                      fastqc.summary.ufastqcplot())
                 # Screens
                 screen_files = []
                 for name in ('model_organisms','other_organisms','rRNA',):
@@ -129,21 +160,24 @@ class QCReporter:
                     screen_files.append(os.path.join(self._qc_dir,txt))
                     summary_tbl.set_value(idx,'screens_r1',"<img src='%s' />" %
                                           self._uscreenplot(screen_files))
+                # Fuller report that summary table links to
+                sample_report.add("<h3>%s</h3>" % os.path.basename(fq_pair[0]))
+                sample_report.add("<a href='%s'><img src='%s' height=250 width=480 /></a>" % \
+                                  (fastqc.summary.link_to_module('Per base sequence quality'),
+                                   fastqc.quality_boxplot(inline=True)))
+                sample_report.add(fastqc.summary.html_table())
                 # R2
                 if self.paired_end:
                     # Locate FastQC outputs for R2
-                    fastqc_dir = fastqc_output(fq_pair[1])[0]
-                    fastqc_data = os.path.join(self._qc_dir,fastqc_dir,
-                                               'fastqc_data.txt')
-                    fastqc_summary =  os.path.join(self._qc_dir,fastqc_dir,
-                                                   'summary.txt')
+                    fastqc = Fastqc(os.path.join(self._qc_dir,
+                                                 fastqc_output(fq_pair[1])[0]))
                     # Boxplot
                     summary_tbl.set_value(idx,'boxplot_r2',"<img src='%s' />" %
-                                          self._uboxplot(fastqc_data))
+                                          fastqc.data.uboxplot())
                     # FastQC summary plot
                     summary_tbl.set_value(idx,
                                           'fastqc_r2',"<img src='%s' />" %
-                                          self._ufastqcplot(fastqc_summary))
+                                          fastqc.summary.ufastqcplot())
                     # Screens
                     screen_files = []
                     for name in ('model_organisms','other_organisms','rRNA',):
@@ -151,38 +185,16 @@ class QCReporter:
                         screen_files.append(os.path.join(self._qc_dir,txt))
                         summary_tbl.set_value(idx,'screens_r2',"<img src='%s' />" %
                                               self._uscreenplot(screen_files))
+                    # Fuller report that summary table links to
+                    sample_report.add("<h3>%s</h3>" % os.path.basename(fq_pair[1]))
+                    sample_report.add("<a href='%s'><img src='%s' height=250 width=480 /></a>" % \
+                                      (fastqc.summary.link_to_module('Per base sequence quality'),
+                                       fastqc.quality_boxplot(inline=True)))
+                    sample_report.add(fastqc.summary.html_table())
                 # Reset sample name for remaining pairs
                 sample_name = '&nbsp;'
         # Write the report
         report.write("%s.qcreport.html" % self.name)
-
-    #def _uboxplot(self,fastq):
-    def _uboxplot(self,fastqc_data):
-        """
-        Generate Base64 encoded micro boxplot for FASTQ quality
-
-        """
-        #tmp_boxplot = "tmp.%s.uboxplot.png" % os.path.basename(fastq)
-        #uboxplot_from_fastq(fastq,tmp_boxplot)
-        tmp_boxplot = "tmp.%s.uboxplot.png" % os.path.basename(fastqc_data)
-        uboxplot_from_fastqc_data(fastqc_data,tmp_boxplot)
-        uboxplot64encoded = "data:image/png;base64," + \
-                            PNGBase64Encoder().encodePNG(tmp_boxplot)
-        os.remove(tmp_boxplot)
-        return uboxplot64encoded
-
-    def _ufastqcplot(self,fastqc_summary):
-        """
-        Generate Base64 encoded micro FastQC summary plot
-
-        """
-        tmp_plot = "tmp.%s.ufastqcplot.png" % \
-                   os.path.basename(fastqc_summary)
-        ufastqcplot(fastqc_summary,tmp_plot)
-        ufastqcplot64encoded = "data:image/png;base64," + \
-                               PNGBase64Encoder().encodePNG(tmp_plot)
-        os.remove(tmp_plot)
-        return ufastqcplot64encoded
 
     def _uscreenplot(self,fastq_screens):
         """
@@ -272,7 +284,7 @@ def get_fastq_pairs(sample):
     fastqs_r2 = sample.fastq_subset(read_number=2)
     for fqr1 in fastqs_r1:
         # Split up R1 name
-        print "fqr1 %s" % fqr1
+        print "fqr1 %s" % os.path.basename(fqr1)
         fastq_base = os.path.basename(fqr1)
         dir_path = os.path.dirname(fqr1)
         try:
@@ -286,7 +298,7 @@ def get_fastq_pairs(sample):
         fqr2 = os.path.join(dir_path,"%s" % fqr2)
         if ext:
             fqr2 += ext
-        print "fqr2 %s" % fqr2
+        print "fqr2 %s" % os.path.basename(fqr2)
         if fqr2 in fastqs_r2:
             pairs.append((fqr1,fqr2))
         else:

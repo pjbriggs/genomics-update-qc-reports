@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 #
 # fastqc library
+import os
+import tempfile
 from bcftbx.TabFile import TabFile
+from bcftbx.htmlpagewriter import PNGBase64Encoder
+from .docwriter import Table
+from .boxplots import uboxplot_from_fastqc_data
 from PIL import Image
 
 """
@@ -42,6 +47,61 @@ rcentile
 
 """
 
+class Fastqc:
+    """
+    Wrapper class for handling outputs from FastQC
+
+    The ``Fastqc`` object gives access to various
+    aspects of the outputs of the FastQC program.
+
+    """
+    def __init__(self,fastqc_dir):
+        """
+        Create a new Fastqc instance
+
+        Arguments:
+          fastqc_dir (str): path to the top-level
+            output directory from a FastQC run.
+
+        """
+        self._fastqc_dir = os.path.abspath(fastqc_dir)
+        self._fastqc_summary = FastqcSummary(
+            summary_file=os.path.join(self._fastqc_dir,
+                                      'summary.txt'))
+        self._fastqc_data = FastqcData(
+            os.path.join(self._fastqc_dir,
+                         'fastqc_data.txt'))
+        self._html_report = self._fastqc_dir + '.html'
+        self._zip = self._fastqc_dir + '.zip'
+
+    @property
+    def summary(self):
+        """
+        Return a FastqcSummary instance
+
+        """
+        return self._fastqc_summary
+
+    @property
+    def data(self):
+        """
+        Return a FastqcData instance
+
+        """
+        return self._fastqc_data
+
+    def quality_boxplot(self,inline=False):
+        """
+        """
+        boxplot = os.path.join(self._fastqc_dir,
+                               'Images',
+                               'per_base_quality.png')
+        if inline:
+            return "data:image/png;base64," + \
+                PNGBase64Encoder().encodePNG(boxplot)
+        else:
+            return boxplot
+
 class FastqcSummary(TabFile):
     """
     Class representing data from a Fastqc summary file
@@ -49,7 +109,7 @@ class FastqcSummary(TabFile):
     """
     def __init__(self,summary_file=None):
         """
-        Create a new FastqscSummary instance
+        Create a new FastqcSummary instance
 
         """
         TabFile.__init__(self,
@@ -57,10 +117,17 @@ class FastqcSummary(TabFile):
                                        'Module',
                                        'File',))
         if summary_file:
+            summary_file = os.path.abspath(summary_file)
             with open(summary_file,'r') as fp:
                 for line in fp:
                     line = line.strip()
                     self.append(tabdata=line)
+        self._summary_file = summary_file
+
+    @property
+    def path(self):
+        # Path to the summary file
+        return self._summary_file
 
     @property
     def modules(self):
@@ -89,6 +156,39 @@ class FastqcSummary(TabFile):
         return [r['Module'] for r in filter(lambda x: x['Status'] == 'FAIL',
                                             self)]
 
+    def link_to_module(self,name):
+        """
+        """
+        i = self.modules.index(name)
+        return "#M%d" % i
+
+    def ufastqcplot(self):
+        """
+        Generate Base64 encoded micro FastQC summary plot
+
+        """
+        tmp_plot = tempfile.mkstemp(".ufastqc.png")[1]
+        ufastqcplot(self.path,tmp_plot)
+        ufastqcplot64encoded = "data:image/png;base64," + \
+                               PNGBase64Encoder().encodePNG(tmp_plot)
+        os.remove(tmp_plot)
+        return ufastqcplot64encoded
+
+    def html_table(self):
+        """
+        Generate HTML table for FastQC summary
+
+        """
+        tbl = Table(('module','status'),
+                    module='FastQC test',status='Outcome')
+        tbl.add_css_classes('fastqc_summary','summary')
+        for name in self.modules:
+            tbl.add_row(module="<a href='%s'>%s</a>" % (self.link_to_module(name),
+                                                        name),
+                        status="<span class='%s'>%s</span>" % (self.status(name),
+                                                               self.status(name)))
+        return tbl.html()
+
 class FastqcData:
     """
     Class representing data from a Fastqc data file
@@ -114,6 +214,7 @@ class FastqcData:
             file which will be read in and processed
 
         """
+        self._data_file = os.path.abspath(data_file)
         self._fastqc_version = None
         self._modules = {}
         if data_file:
@@ -131,6 +232,14 @@ class FastqcData:
                         fastqc_module = None
                     else:
                         self._modules[fastqc_module].append(line)
+
+    @property
+    def path(self):
+        """
+        Path to the fastqc_data.txt file
+
+        """
+        return self._data_file
 
     def basic_statistics(self,measure):
         """
@@ -162,6 +271,18 @@ class FastqcData:
             if key == measure:
                 return value
         raise KeyError("No key '%s'" % key)
+
+    def uboxplot(self):
+        """
+        Generate Base64 encoded micro quality boxplot
+
+        """
+        tmp_boxplot = tempfile.mkstemp(".uboxplot.png")[1]
+        uboxplot_from_fastqc_data(self.path,tmp_boxplot)
+        uboxplot64encoded = "data:image/png;base64," + \
+                            PNGBase64Encoder().encodePNG(tmp_boxplot)
+        os.remove(tmp_boxplot)
+        return uboxplot64encoded
 
 def ufastqcplot(summary_file,outfile):
     """
@@ -222,7 +343,6 @@ def ufastqcplot(summary_file,outfile):
                 #print "%d %d" % (i,j)
                 pixels[i,j] = code['rgb']
     # Output the plot to file
-    print "Saving to %s" % outfile
     img.save(outfile)
     return outfile
 
