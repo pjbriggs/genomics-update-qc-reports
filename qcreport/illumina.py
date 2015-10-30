@@ -74,29 +74,33 @@ class QCReporter:
                         "                   padding: 2px 5px;\n"
                         "                   border-bottom: solid 1px lightgray; }")
         # Write summary table
-        summary = Table(('Sample',))
+        summary = Table(('sample',),sample='Sample')
         if self.paired_end:
-            summary.append_columns('Fastqs')
+            summary.append_columns('fastqs',fastqs='Fastqs (R1/R2)')
         else:
-            summary.append_columns('Fastq')
-        summary.append_columns('Reads','FastQC(R1)','Boxplot(R1)','Screen(R1)')
+            summary.append_columns('fastq',fastq='Fastq')
+        summary.append_columns('reads','fastqc_r1','boxplot_r1','screens_r1',
+                               reads='Reads',fastqc_r1='FastQC',boxplot_r1='Boxplot',
+                               screens_r1='Screens')
         if self.paired_end:
-            summary.append_columns('FastQC(R2)','Boxplot(R2)','Screen(R2)')
+            summary.append_columns('fastqc_r2','boxplot_r2','screens_r2',
+                                   fastqc_r2='FastQC',boxplot_r2='Boxplot',
+                                   screens_r2='Screens')
         # Write entries for samples, fastqs etc
         current_sample = None
         for sample in self._samples:
             sample_name = sample.name
             for fq_pair in sample.fastq_pairs:
                 # Sample name for first pair only
-                idx = summary.add_row(Sample=sample_name)
+                idx = summary.add_row(sample=sample_name)
                 # Fastq name(s)
                 if self.paired_end:
-                    summary.set_value(idx,'Fastqs',
+                    summary.set_value(idx,'fastqs',
                                       "%s<br />%s" %
                                       (os.path.basename(fq_pair[0]),
                                        os.path.basename(fq_pair[1])))
                 else:
-                    summary.set_value(idx,'Fastq',
+                    summary.set_value(idx,'fastq',
                                       os.path.basename(fq_pair[0]))
                 # Locate FastQC outputs for R1
                 fastqc_dir = fastqc_output(fq_pair[0])[0]
@@ -107,20 +111,20 @@ class QCReporter:
                 # Number of reads
                 nreads = FastqcData(fastqc_data).\
                          basic_statistics('Total Sequences')
-                summary.set_value(idx,'Reads',nreads)
+                summary.set_value(idx,'reads',nreads)
                 # Boxplot
-                summary.set_value(idx,'Boxplot(R1)',"<img src='%s' />" %
+                summary.set_value(idx,'boxplot_r1',"<img src='%s' />" %
                                   self._uboxplot(fastqc_data))
                 # FastQC summary plot
                 summary.set_value(idx,
-                                  'FastQC(R1)',"<img src='%s' />" %
+                                  'fastqc_r1',"<img src='%s' />" %
                                   self._ufastqcplot(fastqc_summary))
                 # Screens
                 screen_files = []
                 for name in ('model_organisms','other_organisms','rRNA',):
                     png,txt = fastq_screen_output(fq_pair[0],name)
                     screen_files.append(os.path.join(self._qc_dir,txt))
-                    summary.set_value(idx,'Screen(R1)',"<img src='%s' />" %
+                    summary.set_value(idx,'screens_r1',"<img src='%s' />" %
                                       self._uscreenplot(screen_files))
                 # R2
                 if self.paired_end:
@@ -131,18 +135,18 @@ class QCReporter:
                     fastqc_summary =  os.path.join(self._qc_dir,fastqc_dir,
                                                    'summary.txt')
                     # Boxplot
-                    summary.set_value(idx,'Boxplot(R2)',"<img src='%s' />" %
+                    summary.set_value(idx,'boxplot_r2',"<img src='%s' />" %
                                       self._uboxplot(fastqc_data))
                     # FastQC summary plot
                     summary.set_value(idx,
-                                      'FastQC(R2)',"<img src='%s' />" %
+                                      'fastqc_r2',"<img src='%s' />" %
                                       self._ufastqcplot(fastqc_summary))
                     # Screens
                     screen_files = []
                     for name in ('model_organisms','other_organisms','rRNA',):
                         png,txt = fastq_screen_output(fq_pair[1],name)
                         screen_files.append(os.path.join(self._qc_dir,txt))
-                        summary.set_value(idx,'Screen(R2)',"<img src='%s' />" %
+                        summary.set_value(idx,'screens_r2',"<img src='%s' />" %
                                           self._uscreenplot(screen_files))
                 # Reset sample name for remaining pairs
                 sample_name = '&nbsp;'
