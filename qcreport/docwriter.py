@@ -12,24 +12,37 @@ class Table:
     >>> t = Table('Key','Value')
 
     """
-    def __init__(self,columns):
+    def __init__(self,columns,**kws):
         """
         Create a new ReportTable instance
+
+        Arguments:
+          columns (list): list of column ids
+          kws (mapping): optional, mapping of
+            column ids to actual names
 
         """
         self._columns = [x for x in columns]
         self._rows = []
+        self._column_names = dict(kws)
 
-    def append_columns(self,*names):
+    def append_columns(self,*columns,**kws):
         """
         Add a new columns to the table
 
+        Arguments:
+          columns (list): list of column ids
+          kws (mapping): optional, mapping of
+            column ids to actual names
+
         """
-        for name in names:
-            if name in self._columns:
-                raise KeyError("Column called '%s' already defined"
-                               % name)
-            self._columns.append(name)
+        for col in columns:
+            if col in self._columns:
+                raise KeyError("Column with id '%s' already defined"
+                               % col)
+            self._columns.append(col)
+        for col in kws:
+            self._column_names[col] = kws[col]
 
     def add_row(self,**kws):
         """
@@ -70,7 +83,11 @@ class Table:
         header = []
         header.append("<tr>")
         for col in self._columns:
-            header.append("<th>%s</th>" % col)
+            try:
+                col_name = self._column_names[col]
+            except KeyError:
+                col_name = col
+            header.append("<th>%s</th>" % col_name)
         header.append("</tr>")
         html.append(''.join(header))
         # Body
