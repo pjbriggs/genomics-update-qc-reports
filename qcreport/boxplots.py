@@ -254,6 +254,5 @@ def uboxplot(fastq_stats,outfile):
         # Mean coloured black
         pixels[i,40-int(fastq_stats.mean[i])] = RGB_COLORS['blue']
     # Output the boxplot to file
-    print "Saving to %s" % outfile
     img.save(outfile)
     return outfile

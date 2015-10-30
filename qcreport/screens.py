@@ -153,7 +153,6 @@ def uscreenplot(screen_files,outfile,threshold=5.0):
                     pixels[i,y+j] = rgb
             x += npx
     # Output the plot to file
-    print "Saving to %s" % outfile
     img.save(outfile)
     return outfile
 
@@ -216,6 +215,5 @@ def multiscreenplot(screen_files,outfile):
             for j in xrange(barwidth):
                 pixels[i,y+j] = bbox_color
     # Output the plot to file
-    print "Saving to %s" % outfile
     img.save(outfile)
     return outfile
