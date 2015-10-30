@@ -63,6 +63,15 @@ class Section:
     def __init__(self,title=None):
         self._title = title
         self._content = []
+        self._css_classes = []
+
+    def add_css_classes(self,*classes):
+        """
+        Associate CSS classes with the section
+
+        """
+        for css_class in classes:
+            self._css_classes.append(css_class)
 
     def add(self,content):
         """
@@ -76,7 +85,7 @@ class Section:
         Generate HTML version of the section
 
         """
-        html = ['<div>']
+        html = ["<div class='%s'>" % ' '.join(self._css_classes)]
         if self._title is not None:
             html.append("<h2>%s</h2>" % self._title)
         for content in self._content:
@@ -113,6 +122,8 @@ class Table:
 
     def add_css_classes(self,*classes):
         """
+        Associate CSS classes with the section
+
         """
         for css_class in classes:
             self._css_classes.append(css_class)
