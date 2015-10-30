@@ -9,6 +9,7 @@ from bcftbx.TabFile import TabFile
 from bcftbx.qc.report import strip_ngs_extensions
 from bcftbx.htmlpagewriter import HTMLPageWriter
 from bcftbx.htmlpagewriter import PNGBase64Encoder
+from .docwriter import Document
 from .docwriter import Table
 from .boxplots import uboxplot_from_fastq
 from .boxplots import uboxplot_from_fastqc_data
@@ -60,30 +61,32 @@ class QCReporter:
         Report the QC for the project
 
         """
-        # Initialise HTML
-        html = HTMLPageWriter("%s" % self.name)
-        html.add("<h1>%s: QC report</h1>" % self.name)
+        # Initialise report
+        report = Document(title="%s: QC report" % self.name)
         # Styles
-        html.addCSSRule("table.summary { border: solid 1px grey;\n"
-                        "                background-color: white;\n"
-                        "                font-size: 80% }")
-        html.addCSSRule("table.summary th { background-color: grey;\n"
-                        "                   color: white;\n"
-                        "                   padding: 2px 5px; }")
-        html.addCSSRule("table.summary td { text-align: right; \n"
-                        "                   padding: 2px 5px;\n"
-                        "                   border-bottom: solid 1px lightgray; }")
-        # Write summary table
-        summary = Table(('sample',),sample='Sample')
+        report.add_css_rule("table.summary { border: solid 1px grey;\n"
+                            "                background-color: white;\n"
+                            "                font-size: 80% }")
+        report.add_css_rule("table.summary th { background-color: grey;\n"
+                            "                   color: white;\n"
+                            "                   padding: 2px 5px; }")
+        report.add_css_rule("table.summary td { text-align: right; \n"
+                            "                   padding: 2px 5px;\n"
+                            "                   border-bottom: solid 1px lightgray; }")
+        # Build summary section & table
+        summary = report.add_section("Summary")
+        summary_tbl = Table(('sample',),sample='Sample')
+        summary_tbl.add_css_classes('summary')
+        summary.add(summary_tbl)
         if self.paired_end:
-            summary.append_columns('fastqs',fastqs='Fastqs (R1/R2)')
+            summary_tbl.append_columns('fastqs',fastqs='Fastqs (R1/R2)')
         else:
-            summary.append_columns('fastq',fastq='Fastq')
-        summary.append_columns('reads','fastqc_r1','boxplot_r1','screens_r1',
-                               reads='Reads',fastqc_r1='FastQC',boxplot_r1='Boxplot',
-                               screens_r1='Screens')
+            summary_tbl.append_columns('fastq',fastq='Fastq')
+        summary_tbl.append_columns('reads','fastqc_r1','boxplot_r1','screens_r1',
+                                   reads='#reads',fastqc_r1='FastQC',boxplot_r1='Boxplot',
+                                   screens_r1='Screens')
         if self.paired_end:
-            summary.append_columns('fastqc_r2','boxplot_r2','screens_r2',
+            summary_tbl.append_columns('fastqc_r2','boxplot_r2','screens_r2',
                                    fastqc_r2='FastQC',boxplot_r2='Boxplot',
                                    screens_r2='Screens')
         # Write entries for samples, fastqs etc
@@ -92,16 +95,16 @@ class QCReporter:
             sample_name = sample.name
             for fq_pair in sample.fastq_pairs:
                 # Sample name for first pair only
-                idx = summary.add_row(sample=sample_name)
+                idx = summary_tbl.add_row(sample=sample_name)
                 # Fastq name(s)
                 if self.paired_end:
-                    summary.set_value(idx,'fastqs',
-                                      "%s<br />%s" %
-                                      (os.path.basename(fq_pair[0]),
-                                       os.path.basename(fq_pair[1])))
+                    summary_tbl.set_value(idx,'fastqs',
+                                          "%s<br />%s" %
+                                          (os.path.basename(fq_pair[0]),
+                                           os.path.basename(fq_pair[1])))
                 else:
-                    summary.set_value(idx,'fastq',
-                                      os.path.basename(fq_pair[0]))
+                    summary_tbl.set_value(idx,'fastq',
+                                          os.path.basename(fq_pair[0]))
                 # Locate FastQC outputs for R1
                 fastqc_dir = fastqc_output(fq_pair[0])[0]
                 fastqc_data = os.path.join(self._qc_dir,fastqc_dir,
@@ -111,21 +114,21 @@ class QCReporter:
                 # Number of reads
                 nreads = FastqcData(fastqc_data).\
                          basic_statistics('Total Sequences')
-                summary.set_value(idx,'reads',nreads)
+                summary_tbl.set_value(idx,'reads',nreads)
                 # Boxplot
-                summary.set_value(idx,'boxplot_r1',"<img src='%s' />" %
-                                  self._uboxplot(fastqc_data))
+                summary_tbl.set_value(idx,'boxplot_r1',"<img src='%s' />" %
+                                      self._uboxplot(fastqc_data))
                 # FastQC summary plot
-                summary.set_value(idx,
-                                  'fastqc_r1',"<img src='%s' />" %
-                                  self._ufastqcplot(fastqc_summary))
+                summary_tbl.set_value(idx,
+                                      'fastqc_r1',"<img src='%s' />" %
+                                      self._ufastqcplot(fastqc_summary))
                 # Screens
                 screen_files = []
                 for name in ('model_organisms','other_organisms','rRNA',):
                     png,txt = fastq_screen_output(fq_pair[0],name)
                     screen_files.append(os.path.join(self._qc_dir,txt))
-                    summary.set_value(idx,'screens_r1',"<img src='%s' />" %
-                                      self._uscreenplot(screen_files))
+                    summary_tbl.set_value(idx,'screens_r1',"<img src='%s' />" %
+                                          self._uscreenplot(screen_files))
                 # R2
                 if self.paired_end:
                     # Locate FastQC outputs for R2
@@ -135,24 +138,23 @@ class QCReporter:
                     fastqc_summary =  os.path.join(self._qc_dir,fastqc_dir,
                                                    'summary.txt')
                     # Boxplot
-                    summary.set_value(idx,'boxplot_r2',"<img src='%s' />" %
-                                      self._uboxplot(fastqc_data))
+                    summary_tbl.set_value(idx,'boxplot_r2',"<img src='%s' />" %
+                                          self._uboxplot(fastqc_data))
                     # FastQC summary plot
-                    summary.set_value(idx,
-                                      'fastqc_r2',"<img src='%s' />" %
-                                      self._ufastqcplot(fastqc_summary))
+                    summary_tbl.set_value(idx,
+                                          'fastqc_r2',"<img src='%s' />" %
+                                          self._ufastqcplot(fastqc_summary))
                     # Screens
                     screen_files = []
                     for name in ('model_organisms','other_organisms','rRNA',):
                         png,txt = fastq_screen_output(fq_pair[1],name)
                         screen_files.append(os.path.join(self._qc_dir,txt))
-                        summary.set_value(idx,'screens_r2',"<img src='%s' />" %
-                                          self._uscreenplot(screen_files))
+                        summary_tbl.set_value(idx,'screens_r2',"<img src='%s' />" %
+                                              self._uscreenplot(screen_files))
                 # Reset sample name for remaining pairs
                 sample_name = '&nbsp;'
-        # Write the table
-        html.add(summary.html(css_class="summary"))
-        html.write("%s.qcreport.html" % self.name)
+        # Write the report
+        report.write("%s.qcreport.html" % self.name)
 
     #def _uboxplot(self,fastq):
     def _uboxplot(self,fastqc_data):
