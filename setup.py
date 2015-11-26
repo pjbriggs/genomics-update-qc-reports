@@ -31,7 +31,7 @@ setup(
     license = 'Artistic License',
     install_requires = ['pillow',
                         'matplotlib',
-                        'genomics',
+                        'genomics-bcftbx',
                         'auto_process_ngs'],
     test_suite = 'nose.collector',
     tests_require = ['nose'],
