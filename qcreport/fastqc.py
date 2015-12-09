@@ -167,10 +167,11 @@ class FastqcSummary(TabFile):
         Generate Base64 encoded micro FastQC summary plot
 
         """
-        tmp_plot = tempfile.mkstemp(".ufastqc.png")[1]
+        fp,tmp_plot = tempfile.mkstemp(".ufastqc.png")
         ufastqcplot(self.path,tmp_plot)
         ufastqcplot64encoded = "data:image/png;base64," + \
                                PNGBase64Encoder().encodePNG(tmp_plot)
+        os.fdopen(fp).close()
         os.remove(tmp_plot)
         return ufastqcplot64encoded
 
@@ -277,10 +278,11 @@ class FastqcData:
         Generate Base64 encoded micro quality boxplot
 
         """
-        tmp_boxplot = tempfile.mkstemp(".uboxplot.png")[1]
+        fp,tmp_boxplot = tempfile.mkstemp(".uboxplot.png")
         uboxplot_from_fastqc_data(self.path,tmp_boxplot)
         uboxplot64encoded = "data:image/png;base64," + \
                             PNGBase64Encoder().encodePNG(tmp_boxplot)
+        os.fdopen(fp).close()
         os.remove(tmp_boxplot)
         return uboxplot64encoded
 
