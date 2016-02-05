@@ -158,8 +158,8 @@ class QCReporter:
                 for name in ('model_organisms','other_organisms','rRNA',):
                     png,txt = fastq_screen_output(fq_pair[0],name)
                     screen_files.append(os.path.join(self._qc_dir,txt))
-                    summary_tbl.set_value(idx,'screens_r1',"<img src='%s' />" %
-                                          self._uscreenplot(screen_files))
+                summary_tbl.set_value(idx,'screens_r1',"<img src='%s' />" %
+                                      self._uscreenplot(screen_files))
                 # Fuller report that summary table links to
                 sample_report.add("<h3>%s</h3>" % os.path.basename(fq_pair[0]))
                 sample_report.add("<a href='%s'><img src='%s' height=250 width=480 /></a>" % \
@@ -183,8 +183,8 @@ class QCReporter:
                     for name in ('model_organisms','other_organisms','rRNA',):
                         png,txt = fastq_screen_output(fq_pair[1],name)
                         screen_files.append(os.path.join(self._qc_dir,txt))
-                        summary_tbl.set_value(idx,'screens_r2',"<img src='%s' />" %
-                                              self._uscreenplot(screen_files))
+                    summary_tbl.set_value(idx,'screens_r2',"<img src='%s' />" %
+                                          self._uscreenplot(screen_files))
                     # Fuller report that summary table links to
                     sample_report.add("<h3>%s</h3>" % os.path.basename(fq_pair[1]))
                     sample_report.add("<a href='%s'><img src='%s' height=250 width=480 /></a>" % \
