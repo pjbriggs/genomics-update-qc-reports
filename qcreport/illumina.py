@@ -12,7 +12,6 @@ from .docwriter import Document
 from .docwriter import Table
 from .fastqc import Fastqc
 from .screens import uscreenplot
-from .screens import multiscreenplot
 
 #######################################################################
 # Classes
@@ -201,7 +200,7 @@ class QCReporter:
         """
         tmp_plot = "tmp.%s.ufastqscreenplot.png" % \
                    os.path.basename(fastq_screens[0])
-        multiscreenplot(fastq_screens,tmp_plot)
+        uscreenplot(fastq_screens,tmp_plot)
         uscreenplot64encoded = "data:image/png;base64," + \
                                PNGBase64Encoder().encodePNG(tmp_plot)
         os.remove(tmp_plot)
