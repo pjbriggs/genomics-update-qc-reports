@@ -14,13 +14,13 @@ class Document:
         self._sections = []
         self._css_rules = []
 
-    def add_section(self,title=None,section=None):
+    def add_section(self,title=None,section=None,name=None):
         """
         Add a new section
 
         """
         if section is None:
-            section = Section(title=title)
+            section = Section(title=title,name=name)
         self._sections.append(section)
         return section
 
@@ -60,10 +60,12 @@ class Section:
     Class representing a generic document section
 
     """
-    def __init__(self,title=None):
+    def __init__(self,title=None,name=None,level=2):
         self._title = title
+        self._name = name
         self._content = []
         self._css_classes = []
+        self._level = level
 
     def add_css_classes(self,*classes):
         """
@@ -80,14 +82,34 @@ class Section:
         """
         self._content.append(content)
 
+    def add_subsection(self,title=None,section=None,name=None):
+        """
+        Add subsection within the section
+
+        """
+        if section is None:
+            subsection = Section(title=title,name=name,level=self._level+1)
+        else:
+            subsection = section
+        self.add(subsection)
+        return subsection
+
     def html(self):
         """
         Generate HTML version of the section
 
         """
-        html = ["<div class='%s'>" % ' '.join(self._css_classes)]
+        div = "<div"
+        if self._name:
+            div += " id='%s'" % self._name
+        if self._css_classes:
+            div += " class='%s'" % ' '.join(self._css_classes)
+        div += ">"
+        html = [div,]
         if self._title is not None:
-            html.append("<h2>%s</h2>" % self._title)
+            html.append("<h%d>%s</h%d>" % (self._level,
+                                           self._title,
+                                           self._level))
         for content in self._content:
             try:
                 html.append(content.html())
@@ -198,12 +220,66 @@ class Table:
             line.append("<tr>")
             for col in self._columns:
                 try:
-                    value = row[col]
+                    value = row[col].html()
                 except KeyError:
                     value = '&nbsp;'
+                except AttributeError:
+                    value = row[col]
                 line.append("<td>%s</td>" % value)
             line.append("</tr>")
             html.append(''.join(line))
         # Finish
         html.append("</table>")
         return '\n'.join(html)
+
+class Img:
+    """
+    Utility class for embedding <img> tags
+
+    Example usage:
+
+    >>> img = Img('picture.png',width=150)
+
+    """
+    def __init__(self,src,height=None,width=None,href=None):
+        """
+        Create a new ReportTable instance
+
+        Arguments:
+          src (str): string to use as the 'src'
+            attribute for the <img.../> tag
+          height (int): optional height (pixels)
+          width (int): optional width (pixels)
+          href (str): if specified then the <img.../>
+            will be wrapped in <a href..>...</a> with
+            this used as the link target
+
+        """
+        self._src = src
+        self._height = height
+        self._width = width
+        self._name = None
+        self._href = None
+
+    def html(self):
+        """
+        Generate HTML version of the image tag
+
+        """
+        # Build the tag contents
+        html = []
+        html.append("<img ")
+        if self._name:
+            html.append("id='%s'" % self._name)
+        html.append("src='%s'" % self._src)
+        # Optional height and width
+        if self._height:
+            html.append("height='%s'" % self._height)
+        if self._width:
+            html.append("width='%s'" % self._width)
+        html.append("/>")
+        # Wrap in a hef
+        if self._href:
+            html.insert(0,"<a href='%s'>" % self._href)
+            html.append("</a>")
+        return " ".join(html)
