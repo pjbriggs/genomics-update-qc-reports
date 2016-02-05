@@ -46,6 +46,7 @@ class QCReporter:
             self._stats = None
         for sample in self._project.samples:
             self._samples.append(QCSample(sample))
+        print "Found %d samples" % len(self._samples)
 
     @property
     def name(self):
@@ -109,7 +110,7 @@ class QCReporter:
                             "table th { border-bottom: solid 1px lightgray; }\n"
                             ".no_print { display: none; }\n"
                             "}")
-        # Build summary section & table
+        # Set up summary section & table
         summary = report.add_section("Summary")
         summary_tbl = Table(('sample',),sample='Sample')
         summary_tbl.add_css_classes('summary')
@@ -127,7 +128,8 @@ class QCReporter:
                                    screens_r2='Screens')
         # Write entries for samples, fastqs etc
         current_sample = None
-        for sample in self._samples:
+        for i,sample in enumerate(self._samples):
+            print "Sample #%3d: %s " % (i+1,sample.name)
             sample_name = sample.name
             sample_report = report.add_section("%s" % sample_name)
             sample_report.add_css_classes('sample')
