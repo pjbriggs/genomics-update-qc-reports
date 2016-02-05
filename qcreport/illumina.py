@@ -137,8 +137,9 @@ class QCReporter:
             sample_report.add_css_classes('sample')
             for fq_pair in sample.fastq_pairs:
                 # Sample name for first pair only
-                idx = summary_tbl.add_row(sample="<a href='#sample_%s'>%s</a>"
-                                          % (sample_name,sample_name))
+                idx = summary_tbl.add_row(sample="<a href='#%s'>%s</a>"
+                                          % (sample_report.name,
+                                             sample_name))
                 # Fastq name(s)
                 if self.paired_end:
                     summary_tbl.set_value(idx,'fastqs',
