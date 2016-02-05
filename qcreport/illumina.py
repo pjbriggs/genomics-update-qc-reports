@@ -135,14 +135,14 @@ class QCReporter:
                 if self.paired_end:
                     summary_tbl.set_value(idx,'fastqs',
                                           "%s<br />%s" %
-                                          (os.path.basename(fq_pair[0]),
-                                           os.path.basename(fq_pair[1])))
+                                          (os.path.basename(fq_pair.r1),
+                                           os.path.basename(fq_pair.r2)))
                 else:
                     summary_tbl.set_value(idx,'fastq',
-                                          os.path.basename(fq_pair[0]))
+                                          os.path.basename(fq_pair.r1))
                 # Locate FastQC outputs for R1
                 fastqc = Fastqc(os.path.join(self._qc_dir,
-                                             fastqc_output(fq_pair[0])[0]))
+                                             fastqc_output(fq_pair.r1)[0]))
                 # Number of reads
                 nreads = fastqc.data.basic_statistics('Total Sequences')
                 summary_tbl.set_value(idx,'reads',nreads)
@@ -156,12 +156,12 @@ class QCReporter:
                 # Screens
                 screen_files = []
                 for name in ('model_organisms','other_organisms','rRNA',):
-                    png,txt = fastq_screen_output(fq_pair[0],name)
+                    png,txt = fastq_screen_output(fq_pair.r1,name)
                     screen_files.append(os.path.join(self._qc_dir,txt))
                 summary_tbl.set_value(idx,'screens_r1',"<img src='%s' />" %
                                       self._uscreenplot(screen_files))
                 # Fuller report that summary table links to
-                sample_report.add("<h3>%s</h3>" % os.path.basename(fq_pair[0]))
+                sample_report.add("<h3>%s</h3>" % os.path.basename(fq_pair.r1))
                 sample_report.add("<a href='%s'><img src='%s' height=250 width=480 /></a>" % \
                                   (fastqc.summary.link_to_module('Per base sequence quality'),
                                    fastqc.quality_boxplot(inline=True)))
@@ -170,7 +170,7 @@ class QCReporter:
                 if self.paired_end:
                     # Locate FastQC outputs for R2
                     fastqc = Fastqc(os.path.join(self._qc_dir,
-                                                 fastqc_output(fq_pair[1])[0]))
+                                                 fastqc_output(fq_pair.r2)[0]))
                     # Boxplot
                     summary_tbl.set_value(idx,'boxplot_r2',"<img src='%s' />" %
                                           fastqc.data.uboxplot())
@@ -181,12 +181,12 @@ class QCReporter:
                     # Screens
                     screen_files = []
                     for name in ('model_organisms','other_organisms','rRNA',):
-                        png,txt = fastq_screen_output(fq_pair[1],name)
+                        png,txt = fastq_screen_output(fq_pair.r2,name)
                         screen_files.append(os.path.join(self._qc_dir,txt))
                     summary_tbl.set_value(idx,'screens_r2',"<img src='%s' />" %
                                           self._uscreenplot(screen_files))
                     # Fuller report that summary table links to
-                    sample_report.add("<h3>%s</h3>" % os.path.basename(fq_pair[1]))
+                    sample_report.add("<h3>%s</h3>" % os.path.basename(fq_pair.r2))
                     sample_report.add("<a href='%s'><img src='%s' height=250 width=480 /></a>" % \
                                       (fastqc.summary.link_to_module('Per base sequence quality'),
                                        fastqc.quality_boxplot(inline=True)))
@@ -231,22 +231,43 @@ class QCSample:
     def fastq_pairs(self):
         return self._fastq_pairs
 
-class QCFastqSet:
+class FastqSet:
     """
-    Class describing QC results for a set of Fastq files
+    Class describing a set of Fastq files
 
     A set can be a single or a pair of fastq files.
 
     """
-    def __init__(self,*fastqs):
+    def __init__(self,fqr1,fqr2=None):
         """
         Initialise a new QCFastqSet instance
 
         Arguments:
-           fastqs (str):
+           fqr1 (str): path to R1 Fastq file
+           fqr2 (str): path to R2 Fastq file, or
+             None if the 'set' is a single Fastq
 
         """
-        self._fastqs = list(fastqs)
+        self._fastqs = list((fqr1,fqr2))
+
+    def __getitem__(self,key):
+        return self._fastqs[key]
+
+    @property
+    def r1(self):
+        """
+        Return R1 Fastq file from pair
+
+        """
+        return self._fastqs[0]
+
+    @property
+    def r2(self):
+        """
+        Return R2 Fastq file from pair
+
+        """
+        return self._fastqs[1]
 
 class FastqStats(TabFile):
     """
@@ -276,7 +297,7 @@ def get_fastq_pairs(sample):
        sample (AnalysisSample): sample to get Fastq pairs for
 
     Returns:
-       list: list of Fastq path pairs
+       list: list of FastqSet instances
 
     """
     pairs = []
@@ -300,9 +321,9 @@ def get_fastq_pairs(sample):
             fqr2 += ext
         print "fqr2 %s" % os.path.basename(fqr2)
         if fqr2 in fastqs_r2:
-            pairs.append((fqr1,fqr2))
+            pairs.append(FastqSet(fqr1,fqr2))
         else:
-            pairs.append((fqr1,None))
+            pairs.append(FastqSet(fqr1))
     return pairs
 
 def fastq_screen_output(fastq,screen_name):
