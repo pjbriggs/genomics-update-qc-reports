@@ -184,10 +184,11 @@ class FastqcSummary(TabFile):
                     module='FastQC test',status='Outcome')
         tbl.add_css_classes('fastqc_summary','summary')
         for name in self.modules:
-            tbl.add_row(module="<a href='%s'>%s</a>" % (self.link_to_module(name),
-                                                        name),
-                        status="<span class='%s'>%s</span>" % (self.status(name),
-                                                               self.status(name)))
+            tbl.add_row(module="<a href='%s'>%s</a>" %
+                        (self.link_to_module(name),name),
+                        status="<span class='%s'>%s</span>" % (
+                            self.status(name),
+                            self.status(name)))
         return tbl.html()
 
 class FastqcData:
