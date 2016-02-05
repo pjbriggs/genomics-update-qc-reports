@@ -67,6 +67,10 @@ class Section:
         self._css_classes = []
         self._level = level
 
+    @property
+    def name(self):
+        return self._name
+
     def add_css_classes(self,*classes):
         """
         Associate CSS classes with the section
