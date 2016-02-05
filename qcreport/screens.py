@@ -44,7 +44,7 @@ SpR6	89393	89393	100.00	0	0.00	0	0.00	0	0.00	0	0.00
 
 """
 
-class FastqscreenData(TabFile):
+class Fastqscreen(TabFile):
     """
     Class representing data from a FastqScreen run
 
@@ -115,7 +115,7 @@ def screenplot(screen_files,outfile,threshold=None):
     # Read in the screen data
     screens = []
     for screen_file in screen_files:
-        screens.append(FastqscreenData(screen_file))
+        screens.append(Fastqscreen(screen_file))
     nscreens = len(screens)
     # Plot the data
     plt.figure(1)
@@ -161,7 +161,7 @@ def uscreenplot(screen_files,outfile):
     # Read in the screen data
     screens = []
     for screen_file in screen_files:
-        screens.append(FastqscreenData(screen_file))
+        screens.append(Fastqscreen(screen_file))
     nscreens = len(screens)
     # Make a small stacked bar chart
     bbox_color = (145,145,145)
