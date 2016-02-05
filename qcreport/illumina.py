@@ -13,6 +13,10 @@ from .docwriter import Table
 from .fastqc import Fastqc
 from .screens import uscreenplot
 
+FASTQ_SCREENS = ('model_organisms',
+                 'other_organisms',
+                 'rRNA',)
+
 #######################################################################
 # Classes
 #######################################################################
@@ -154,7 +158,7 @@ class QCReporter:
                                       fastqc.summary.ufastqcplot())
                 # Screens
                 screen_files = []
-                for name in ('model_organisms','other_organisms','rRNA',):
+                for name in FASTQ_SCREENS:
                     png,txt = fastq_screen_output(fq_pair.r1,name)
                     screen_files.append(os.path.join(self._qc_dir,txt))
                 summary_tbl.set_value(idx,'screens_r1',"<img src='%s' />" %
@@ -165,6 +169,11 @@ class QCReporter:
                                   (fastqc.summary.link_to_module('Per base sequence quality'),
                                    fastqc.quality_boxplot(inline=True)))
                 sample_report.add(fastqc.summary.html_table())
+                for name in FASTQ_SCREENS:
+                    png,txt = fastq_screen_output(fq_pair.r1,name)
+                    png = os.path.join(self._qc_dir,png)
+                    sample_report.add("<a href='%s'><img src='%s' height=250 /></a>" %
+                                      (png,self._screenpng(png)))
                 # R2
                 if self.paired_end:
                     # Locate FastQC outputs for R2
@@ -179,7 +188,7 @@ class QCReporter:
                                           fastqc.summary.ufastqcplot())
                     # Screens
                     screen_files = []
-                    for name in ('model_organisms','other_organisms','rRNA',):
+                    for name in FASTQ_SCREENS:
                         png,txt = fastq_screen_output(fq_pair.r2,name)
                         screen_files.append(os.path.join(self._qc_dir,txt))
                     summary_tbl.set_value(idx,'screens_r2',"<img src='%s' />" %
@@ -190,6 +199,11 @@ class QCReporter:
                                       (fastqc.summary.link_to_module('Per base sequence quality'),
                                        fastqc.quality_boxplot(inline=True)))
                     sample_report.add(fastqc.summary.html_table())
+                    for name in FASTQ_SCREENS:
+                        png,txt = fastq_screen_output(fq_pair.r2,name)
+                        png = os.path.join(self._qc_dir,png)
+                        sample_report.add("<a href='%s'><img src='%s' height=250 /></a>" %
+                                          (png,self._screenpng(png)))
                 # Reset sample name for remaining pairs
                 sample_name = '&nbsp;'
         # Write the report
@@ -205,6 +219,10 @@ class QCReporter:
                                PNGBase64Encoder().encodePNG(tmp_plot)
         os.remove(tmp_plot)
         return uscreenplot64encoded
+
+    def _screenpng(self,fastq_screen_png):
+        return "data:image/png;base64," + \
+            PNGBase64Encoder().encodePNG(fastq_screen_png)
 
 class QCSample:
     """
