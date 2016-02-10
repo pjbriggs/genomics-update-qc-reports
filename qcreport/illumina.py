@@ -114,7 +114,7 @@ class QCReporter:
                             ".no_print { display: none; }\n"
                             "}")
         # Set up summary section & table
-        summary = report.add_section("Summary")
+        summary = report.add_section("Summary",name='summary')
         summary_tbl = Table(('sample',),sample='Sample')
         summary_tbl.add_css_classes('summary')
         summary.add(summary_tbl)
@@ -139,9 +139,8 @@ class QCReporter:
             sample_report.add_css_classes('sample')
             for fq_pair in sample.fastq_pairs:
                 # Sample name for first pair only
-                idx = summary_tbl.add_row(sample="<a href='#%s'>%s</a>"
-                                          % (sample_report.name,
-                                             sample_name))
+                idx = summary_tbl.add_row(sample=Link(sample_name,
+                                                      sample_report))
                 # Fastq name(s)
                 fq_r1 = os.path.basename(fq_pair.r1)
                 fq_r2 = os.path.basename(fq_pair.r2)
@@ -214,11 +213,11 @@ class QCReporter:
                                           Img(fastqc.data.uboxplot(),
                                           href=boxplot))
                     # FastQC summary plot
-                    fqr2_report.add(Target("fastqc_%s" % fq_r2),
-                                    fastqc.summary.html_table())
+                    fastqc_tbl = Target("fastqc_%s" % fq_r2)
+                    fqr2_report.add(fastqc_tbl,fastqc.summary.html_table())
                     summary_tbl.set_value(idx,'fastqc_r2',
                                           Img(fastqc.summary.ufastqcplot(),
-                                              href="#fastqc_%s" % fq_r2))
+                                              href=fastqc_tbl))
                     # Fastq_screens
                     fastq_screens = Target("fastq_screens_%s" % fq_r2)
                     fqr2_report.add(fastq_screens)

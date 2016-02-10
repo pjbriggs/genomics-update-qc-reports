@@ -6,6 +6,7 @@ import tempfile
 from bcftbx.TabFile import TabFile
 from bcftbx.htmlpagewriter import PNGBase64Encoder
 from .docwriter import Table
+from .docwriter import Link
 from .boxplots import uboxplot_from_fastqc_data
 from PIL import Image
 
@@ -73,6 +74,10 @@ class Fastqc:
                          'fastqc_data.txt'))
         self._html_report = self._fastqc_dir + '.html'
         self._zip = self._fastqc_dir + '.zip'
+
+    @property
+    def html_report(self):
+        return self._html_report
 
     @property
     def summary(self):
@@ -156,11 +161,20 @@ class FastqcSummary(TabFile):
         return [r['Module'] for r in filter(lambda x: x['Status'] == 'FAIL',
                                             self)]
 
-    def link_to_module(self,name):
+    def link_to_module(self,name,full_path=True):
         """
         """
         i = self.modules.index(name)
-        return "#M%d" % i
+        link = "#M%d" % i
+        if full_path:
+            return self.html_report() + link
+        else:
+            return link
+
+    def html_report(self):
+        """
+        """
+        return os.path.dirname(self.path)+'.html'
 
     def ufastqcplot(self):
         """
@@ -184,8 +198,7 @@ class FastqcSummary(TabFile):
                     module='FastQC test',status='Outcome')
         tbl.add_css_classes('fastqc_summary','summary')
         for name in self.modules:
-            tbl.add_row(module="<a href='%s'>%s</a>" %
-                        (self.link_to_module(name),name),
+            tbl.add_row(module=Link(name,self.link_to_module(name)),
                         status="<span class='%s'>%s</span>" % (
                             self.status(name),
                             self.status(name)))
