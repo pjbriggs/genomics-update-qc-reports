@@ -324,15 +324,16 @@ class Img:
             html.append("height='%s'" % self._height)
         if self._width:
             html.append("width='%s'" % self._width)
-        html.append("/>")
         # Optional alt text
         if self._alt:
             html.append("alt='%s'" % self._alt)
+        # Close the tag
+        html.append("/>")
         # Wrap in a hef
         if self._target:
-            html.insert(0,"<a href='%s'>" % Link(self._target).href)
-            html.append("</a>")
-        return " ".join(html)
+            return Link(" ".join(html),self._target).html()
+        else:
+            return " ".join(html)
 
 class Link:
     """
