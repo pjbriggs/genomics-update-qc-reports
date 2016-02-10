@@ -14,6 +14,7 @@ from .docwriter import Img
 from .docwriter import Link
 from .docwriter import Target
 from .fastqc import Fastqc
+from .screens import Fastqscreen
 from .screens import uscreenplot
 
 FASTQ_SCREENS = ('model_organisms',
@@ -84,6 +85,12 @@ class QCReporter:
                             "     margin: 0;\n"
                             "     border-top-left-radius: 20;\n"
                             "     border-bottom-right-radius: 20; }")
+        report.add_css_rule("h4 { color: black;\n"
+                            "     display: block;\n"
+                            "     padding: 5px 15px;\n"
+                            "     margin: 0;\n"
+                            "     border-top-left-radius: 20;\n"
+                            "     border-bottom-right-radius: 20; }")
         report.add_css_rule(".sample { margin: 10 10;\n"
                             "          border: solid 2px #8CC63F;\n"
                             "          padding: 0;\n"
@@ -105,6 +112,12 @@ class QCReporter:
                             "                                 color: orange; }")
         report.add_css_rule("table.fastqc_summary span.FAIL { font-weight: bold;\n"
                             "                                 color: red; }")
+        report.add_css_rule("table.programs th { text-align: left;\n"
+                            "                    background-color: grey;\n"
+                            "                    color: white;\n"
+                            "                    padding: 2px 5px; }")
+        report.add_css_rule("table.programs td { padding: 2px 5px;\n"
+                            "border-bottom: solid 1px lightgray; }")
         # Rules for printing
         report.add_css_rule("@media print\n"
                             "{\n"
@@ -203,6 +216,9 @@ class QCReporter:
                 summary_tbl.set_value(idx,'screens_r1',
                                       Img(self._uscreenplot(screen_files),
                                           href=fastq_screens))
+                # Program versions
+                versions = fqr1_report.add_subsection("Program versions")
+                versions.add(self._program_versions(fq_pair.r1))
                 # R2
                 if self.paired_end:
                     # Locate FastQC outputs for R2
@@ -244,6 +260,9 @@ class QCReporter:
                     summary_tbl.set_value(idx,'screens_r2',
                                           Img(self._uscreenplot(screen_files),
                                               href=fastq_screens))
+                    # Program versions
+                    versions = fqr2_report.add_subsection("Program versions")
+                    versions.add(self._program_versions(fq_pair.r2))
                 # Reset sample name for remaining pairs
                 sample_name = '&nbsp;'
         # Write the report
@@ -263,6 +282,23 @@ class QCReporter:
     def _screenpng(self,fastq_screen_png):
         return "data:image/png;base64," + \
             PNGBase64Encoder().encodePNG(fastq_screen_png)
+
+    def _program_versions(self,fastq):
+        """
+        """
+        # Program versions table
+        tbl = Table(("Program","Version"))
+        tbl.add_css_classes("programs","summary")
+        tbl.add_row(Program='fastqc',
+                    Version=Fastqc(
+                        os.path.join(self._qc_dir,
+                                     fastqc_output(fastq)[0])).version)
+        tbl.add_row(Program='fastq_screen',
+                    Version=Fastqscreen(
+                        os.path.join(self._qc_dir,
+                                     fastq_screen_output(fastq,
+                                        FASTQ_SCREENS[0])[1])).version)
+        return tbl
 
 class QCSample:
     """
