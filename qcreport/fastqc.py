@@ -76,6 +76,10 @@ class Fastqc:
         self._zip = self._fastqc_dir + '.zip'
 
     @property
+    def version(self):
+        return self.data.version
+
+    @property
     def html_report(self):
         return self._html_report
 
@@ -247,6 +251,10 @@ class FastqcData:
                         fastqc_module = None
                     else:
                         self._modules[fastqc_module].append(line)
+
+    @property
+    def version(self):
+        return self._fastqc_version
 
     @property
     def path(self):
