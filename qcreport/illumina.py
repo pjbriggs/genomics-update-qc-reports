@@ -115,6 +115,8 @@ class QCReporter:
                             "}")
         # Set up summary section & table
         summary = report.add_section("Summary",name='summary')
+        summary.add("%d samples | %d fastqs" % (len(self._samples),
+                                                len(self._project.fastqs)))
         summary_tbl = Table(('sample',),sample='Sample')
         summary_tbl.add_css_classes('summary')
         summary.add(summary_tbl)
@@ -186,6 +188,7 @@ class QCReporter:
                 fastq_screens = Target("fastq_screens_%s" % fq_r1)
                 fqr1_report.add(fastq_screens)
                 screen_files = []
+                fastq_screen_txt = []
                 for name in FASTQ_SCREENS:
                     png,txt = fastq_screen_output(fq_pair.r1,name)
                     png = os.path.join(self._qc_dir,png)
@@ -193,6 +196,10 @@ class QCReporter:
                     fqr1_report.add(Img(self._screenpng(png),
                                         height=250,
                                         href=png))
+                    fastq_screen_txt.append(
+                        Link(name,os.path.join(self._qc_dir,txt)).html())
+                fqr1_report.add("Raw screen data: " +
+                                " | ".join(fastq_screen_txt))
                 summary_tbl.set_value(idx,'screens_r1',
                                       Img(self._uscreenplot(screen_files),
                                           href=fastq_screens))
@@ -222,6 +229,7 @@ class QCReporter:
                     fastq_screens = Target("fastq_screens_%s" % fq_r2)
                     fqr2_report.add(fastq_screens)
                     screen_files = []
+                    fastq_screen_txt = []
                     for name in FASTQ_SCREENS:
                         png,txt = fastq_screen_output(fq_pair.r2,name)
                         png = os.path.join(self._qc_dir,png)
@@ -229,6 +237,10 @@ class QCReporter:
                         fqr2_report.add(Img(self._screenpng(png),
                                             height=250,
                                             href=png))
+                        fastq_screen_txt.append(
+                            Link(name,os.path.join(self._qc_dir,txt)).html())
+                    fqr2_report.add("Raw screen data: " +
+                                    " | ".join(fastq_screen_txt))
                     summary_tbl.set_value(idx,'screens_r2',
                                           Img(self._uscreenplot(screen_files),
                                               href=fastq_screens))
