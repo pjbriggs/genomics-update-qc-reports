@@ -184,7 +184,8 @@ class QCReporter:
                                       Img(fastqc.summary.ufastqcplot(),
                                           href=fastqc_tbl))
                 # Fastq_screens
-                fqr1_report.add(Target("fastq_screens_%s" % fq_r1))
+                fastq_screens = Target("fastq_screens_%s" % fq_r1)
+                fqr1_report.add(fastq_screens)
                 screen_files = []
                 for name in FASTQ_SCREENS:
                     png,txt = fastq_screen_output(fq_pair.r1,name)
@@ -195,7 +196,7 @@ class QCReporter:
                                         href=png))
                 summary_tbl.set_value(idx,'screens_r1',
                                       Img(self._uscreenplot(screen_files),
-                                          href="#fastq_screens_%s" % fq_r1))
+                                          href=fastq_screens))
                 # R2
                 if self.paired_end:
                     # Locate FastQC outputs for R2
@@ -219,7 +220,8 @@ class QCReporter:
                                           Img(fastqc.summary.ufastqcplot(),
                                               href="#fastqc_%s" % fq_r2))
                     # Fastq_screens
-                    fqr2_report.add(Target("fastq_screens_%s" % fq_r2))
+                    fastq_screens = Target("fastq_screens_%s" % fq_r2)
+                    fqr2_report.add(fastq_screens)
                     screen_files = []
                     for name in FASTQ_SCREENS:
                         png,txt = fastq_screen_output(fq_pair.r2,name)
@@ -230,7 +232,7 @@ class QCReporter:
                                             href=png))
                     summary_tbl.set_value(idx,'screens_r2',
                                           Img(self._uscreenplot(screen_files),
-                                              href="#fastq_screens_%s" % fq_r2))
+                                              href=fastq_screens))
                 # Reset sample name for remaining pairs
                 sample_name = '&nbsp;'
         # Write the report
