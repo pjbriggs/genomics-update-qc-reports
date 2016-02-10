@@ -61,6 +61,17 @@ class Section:
 
     """
     def __init__(self,title=None,name=None,level=2):
+        """
+        Create a new Section instance
+
+        Arguments:
+          title (str): title text
+          name (str): name used for the 'id' of
+            the section
+          level (int): section heading level
+            (defaults to 2)
+
+        """
         self._title = title
         self._name = name
         self._content = []
@@ -69,7 +80,13 @@ class Section:
 
     @property
     def name(self):
-        return self._name
+        """
+        Return the name (id) for the section
+
+        """
+        if self._name is not None:
+            return self._name
+        return self._title
 
     def add_css_classes(self,*classes):
         """
@@ -79,16 +96,25 @@ class Section:
         for css_class in classes:
             self._css_classes.append(css_class)
 
-    def add(self,content):
+    def add(self,*args):
         """
         Add content to the section
 
         """
-        self._content.append(content)
+        for content in args:
+            self._content.append(content)
 
     def add_subsection(self,title=None,section=None,name=None):
         """
         Add subsection within the section
+
+        Arguments:
+          title (str): title text
+          section (Section): if supplied then must be
+            a Section instance which is inserted into
+            the current Section as-is
+          name (str): name used for the 'id' of
+            the section
 
         """
         if section is None:
@@ -104,8 +130,8 @@ class Section:
 
         """
         div = "<div"
-        if self._name:
-            div += " id='%s'" % self._name
+        if self.name:
+            div += " id='%s'" % self.name
         if self._css_classes:
             div += " class='%s'" % ' '.join(self._css_classes)
         div += ">"
@@ -243,27 +269,44 @@ class Img:
     Example usage:
 
     >>> img = Img('picture.png',width=150)
+    >>> img.html()
+    "<img src='picture.png' width='150' />"
 
     """
-    def __init__(self,src,height=None,width=None,href=None):
+    def __init__(self,src,name=None,height=None,width=None,href=None,
+                 alt=None):
         """
-        Create a new ReportTable instance
+        Create a new Img instance
 
         Arguments:
           src (str): string to use as the 'src'
+            attribute for the <img.../> tag
+          name (str): string to use as the 'id'
             attribute for the <img.../> tag
           height (int): optional height (pixels)
           width (int): optional width (pixels)
           href (str): if specified then the <img.../>
             will be wrapped in <a href..>...</a> with
             this used as the link target
+          alt (str): if specified then used as the
+            'alternative text' ('alt' attribute
+            for <img.../> tag
 
         """
         self._src = src
         self._height = height
         self._width = width
-        self._name = None
-        self._href = None
+        self._name = name
+        self._target = href
+        self._alt = alt
+
+    @property
+    def name(self):
+        """
+        Return the name (id) for the image
+
+        """
+        return self._name
 
     def html(self):
         """
@@ -272,7 +315,7 @@ class Img:
         """
         # Build the tag contents
         html = []
-        html.append("<img ")
+        html.append("<img")
         if self._name:
             html.append("id='%s'" % self._name)
         html.append("src='%s'" % self._src)
@@ -282,8 +325,119 @@ class Img:
         if self._width:
             html.append("width='%s'" % self._width)
         html.append("/>")
+        # Optional alt text
+        if self._alt:
+            html.append("alt='%s'" % self._alt)
         # Wrap in a hef
-        if self._href:
-            html.insert(0,"<a href='%s'>" % self._href)
+        if self._target:
+            html.insert(0,"<a href='%s'>" % Link(self._target).href)
             html.append("</a>")
         return " ".join(html)
+
+class Link:
+    """
+    Utility class for embedding <a href=...> tags
+
+    Example usage:
+
+    >>> ahref = Link('My report','report.html')
+    >>> ahref.html()
+    "<a href='report.html'>My report</a>"
+
+    The link target can be an object:
+
+    >>> sect = Section("New section",name='new_section')
+    >>> ahref = Link("New Section",sect)
+    >>> ahref.html()
+    "<a href='#new_section'>New Section</a>"
+
+    The target can be seen via the 'href' property:
+
+    >>> ahref.href
+    '#new_section'
+
+    """
+    def __init__(self,text,target=None):
+        """
+        Create a new Link instance
+
+        Arguments:
+          text (str): text to display for the link
+          target (Object): target to link to; if not
+            supplied then 'text' will be used as the
+            link target
+
+        """
+        self._text = text
+        if target is None:
+            self._target = text
+        else:
+            self._target = target
+
+    @property
+    def href(self):
+        """
+        Show the link target text
+
+        """
+        try:
+            return '#%s' % self._target.name
+        except AttributeError:
+            return str(self._target)
+
+    def html(self):
+        """
+        Generate HTML version of the link
+
+        """
+        # Build the tag contents
+        return "<a href='%s'>%s</a>" % (self.href,self._text)
+
+    def __repr__(self):
+        return self.html()
+
+class Target:
+    """
+    Utility class for embedding <a id=... /> tags
+
+    Example usage:
+
+    >>> tgt = Target('my_target')
+    >>> tgt.html()
+    "<a id='my_target' />"
+
+    The target name/id can be retrieved using the
+    'name' property. It can also be supplied directly
+    to a Link object:
+
+    >>> ahref = Link("My target",tgt)
+    >>> ahref.html()
+    "<a href='#my_target'>My target</a>"
+
+    """
+    def __init__(self,name):
+        """
+        Create a new Target instance
+
+        Arguments:
+          name (str): name (i.e. 'id') for the
+            target
+
+        """
+        self._name = name
+
+    @property
+    def name(self):
+        """
+        Return the name (id) for the target
+
+        """
+        return self._name
+
+    def html(self):
+        """
+        Generate HTML version of the target
+
+        """
+        # Build the anchor
+        return "<a id='%s' />" % self._name
