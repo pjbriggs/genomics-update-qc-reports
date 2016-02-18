@@ -11,10 +11,19 @@ https://github.com/fls-bioinformatics-core/genomics
 Installation
 ------------
 
-Do::
+To install from local version do e.g.::
 
-    pip install -r requirements.txt
-    pip install .
+    git clone https://github.com/pjbriggs/genomics-update-qc-reports
+    pip install -r genomics-update-qc-reports/requirements.txt
+    pip install genomics-update-qc-reports/
+
+Alternatively to install directly from GitHub into a ``virtualenv``
+do e.g.::
+
+    virtualenv venv.qcreporter
+    . venv.qcreporter/bin/activate
+    pip install -r https://raw.githubusercontent.com/pjbriggs/genomics-update-qc-reports/master/requirements.txt
+    pip install git+https://github.com/pjbriggs/genomics-update-qc-reports
 
 Usage
 -----
