@@ -25,9 +25,21 @@ do e.g.::
     pip install -r https://raw.githubusercontent.com/pjbriggs/genomics-update-qc-reports/master/requirements.txt
     pip install git+https://github.com/pjbriggs/genomics-update-qc-reports
 
+Known issues
+------------
+
+ - The ``Pillow`` dependency may fail to install with an error of the form::
+
+       ValueError: jpeg is required unless explicitly disabled using --disable-jpeg, aborting
+
+   This error is a known problem for Pillow and can be solved by installing
+   the required underlying system libraries - see
+   https://pillow.readthedocs.org/en/3.0.0/installation.html#linux-installation
+
 Usage
 -----
 
 ::
     qcreporter2 DIR [DIR...]
 
+where ``DIR`` is an analysis project from ``auto_process.py``.
