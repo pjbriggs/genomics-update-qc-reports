@@ -154,8 +154,11 @@ class QCReporter:
             sample_report.add_css_classes('sample')
             for fq_pair in sample.fastq_pairs:
                 # Sample name for first pair only
-                idx = summary_tbl.add_row(sample=Link(sample_name,
-                                                      sample_report))
+                if sample_name is not None:
+                    idx = summary_tbl.add_row(sample=Link(sample_name,
+                                                          sample_report))
+                else:
+                    idx = summary_tbl.add_row(sample="&nbsp;")
                 # Fastq name(s)
                 fq_r1 = os.path.basename(fq_pair.r1)
                 fq_r2 = os.path.basename(fq_pair.r2)
@@ -264,7 +267,7 @@ class QCReporter:
                     versions = fqr2_report.add_subsection("Program versions")
                     versions.add(self._program_versions(fq_pair.r2))
                 # Reset sample name for remaining pairs
-                sample_name = '&nbsp;'
+                sample_name = None
         # Write the report
         report.write("%s.qcreport.html" % self.name)
 
