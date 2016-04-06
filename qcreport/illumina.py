@@ -118,6 +118,8 @@ class QCReporter:
                             "                    padding: 2px 5px; }")
         report.add_css_rule("table.programs td { padding: 2px 5px;\n"
                             "border-bottom: solid 1px lightgray; }")
+        report.add_css_rule("p { font-size: 85%;\n"
+                            "    color: #808080; }")
         # Rules for printing
         report.add_css_rule("@media print\n"
                             "{\n"
@@ -182,99 +184,82 @@ class QCReporter:
                     # Add entry to summary table
                     summary_tbl.set_value(idx,'fastq',Link(fq_r1,
                                                            fqr1_report))
-                # Locate FastQC outputs for R1
-                fastqc = Fastqc(os.path.join(self._qc_dir,
-                                             fastqc_output(fq_pair.r1)[0]))
-                # Number of reads
-                nreads = fastqc.data.basic_statistics('Total Sequences')
-                summary_tbl.set_value(idx,'reads',nreads)
-                # FastQC quality boxplot
-                boxplot = Img(fastqc.quality_boxplot(inline=True),
-                              height=250,
-                              width=480,
-                              href=fastqc.summary.link_to_module(
-                                  'Per base sequence quality'),
-                              name="boxplot_%s" % fq_r1)
-                fqr1_report.add(boxplot)
-                summary_tbl.set_value(idx,'boxplot_r1',
-                                      Img(fastqc.data.uboxplot(),
-                                          href=boxplot))
-                # FastQC summary plot
-                fastqc_tbl = Target("fastqc_%s" % fq_r1)
-                fqr1_report.add(fastqc_tbl,fastqc.summary.html_table())
-                summary_tbl.set_value(idx,'fastqc_r1',
-                                      Img(fastqc.summary.ufastqcplot(),
-                                          href=fastqc_tbl))
-                # Fastq_screens
-                fastq_screens = Target("fastq_screens_%s" % fq_r1)
-                fqr1_report.add(fastq_screens)
-                screen_files = []
-                fastq_screen_txt = []
-                for name in FASTQ_SCREENS:
-                    png,txt = fastq_screen_output(fq_pair.r1,name)
-                    png = os.path.join(self._qc_dir,png)
-                    screen_files.append(os.path.join(self._qc_dir,txt))
-                    fqr1_report.add(Img(self._screenpng(png),
-                                        height=250,
-                                        href=png))
-                    fastq_screen_txt.append(
-                        Link(name,os.path.join(self._qc_dir,txt)).html())
-                fqr1_report.add("Raw screen data: " +
-                                " | ".join(fastq_screen_txt))
-                summary_tbl.set_value(idx,'screens_r1',
-                                      Img(self._uscreenplot(screen_files),
-                                          href=fastq_screens))
-                # Program versions
-                versions = fqr1_report.add_subsection("Program versions")
-                versions.add(self._program_versions(fq_pair.r1))
-                # R2
+                self._report_fastq(fq_r1,'r1',summary_tbl,idx,
+                                   fqr1_report)
                 if self.paired_end:
-                    # Locate FastQC outputs for R2
-                    fastqc = Fastqc(os.path.join(self._qc_dir,
-                                                 fastqc_output(fq_pair.r2)[0]))
-                    # FastQC quality boxplot
-                    boxplot = Img(fastqc.quality_boxplot(inline=True),
-                                  height=250,
-                                  width=480,
-                                  href=fastqc.summary.link_to_module(
-                                      'Per base sequence quality'),
-                                  name="boxplot_%s" % fq_r2)
-                    fqr2_report.add(boxplot)
-                    summary_tbl.set_value(idx,'boxplot_r2',
-                                          Img(fastqc.data.uboxplot(),
-                                          href=boxplot))
-                    # FastQC summary plot
-                    fastqc_tbl = Target("fastqc_%s" % fq_r2)
-                    fqr2_report.add(fastqc_tbl,fastqc.summary.html_table())
-                    summary_tbl.set_value(idx,'fastqc_r2',
-                                          Img(fastqc.summary.ufastqcplot(),
-                                              href=fastqc_tbl))
-                    # Fastq_screens
-                    fastq_screens = Target("fastq_screens_%s" % fq_r2)
-                    fqr2_report.add(fastq_screens)
-                    screen_files = []
-                    fastq_screen_txt = []
-                    for name in FASTQ_SCREENS:
-                        png,txt = fastq_screen_output(fq_pair.r2,name)
-                        png = os.path.join(self._qc_dir,png)
-                        screen_files.append(os.path.join(self._qc_dir,txt))
-                        fqr2_report.add(Img(self._screenpng(png),
-                                            height=250,
-                                            href=png))
-                        fastq_screen_txt.append(
-                            Link(name,os.path.join(self._qc_dir,txt)).html())
-                    fqr2_report.add("Raw screen data: " +
-                                    " | ".join(fastq_screen_txt))
-                    summary_tbl.set_value(idx,'screens_r2',
-                                          Img(self._uscreenplot(screen_files),
-                                              href=fastq_screens))
-                    # Program versions
-                    versions = fqr2_report.add_subsection("Program versions")
-                    versions.add(self._program_versions(fq_pair.r2))
+                    self._report_fastq(fq_r2,'r2',summary_tbl,idx,
+                                       fqr2_report)
                 # Reset sample name for remaining pairs
                 sample_name = None
         # Write the report
         report.write("%s.qcreport.html" % self.name)
+
+    def _report_fastq(self,fq,read_id,summary,idx,report):
+        """
+        Generate report section for a Fastq file
+
+        Arguments:
+          fq (str): Fastq file that is being reported
+          read_id (str): either 'r1' or 'r2'
+          summary (Table): summary table object
+          idx (integer): row index for summary table
+          report (Section): container for the report
+
+        """
+        # Locate FastQC outputs for R1
+        fastqc = Fastqc(os.path.join(self._qc_dir,fastqc_output(fq)[0]))
+        # Number of reads for summary
+        if read_id == 'r1':
+            nreads = fastqc.data.basic_statistics('Total Sequences')
+            summary.set_value(idx,'reads',nreads)
+        # FastQC quality boxplot
+        fastqc_report = report.add_subsection("FastQC")
+        fastqc_report.add("Per base sequence quality boxplot:")
+        boxplot = Img(fastqc.quality_boxplot(inline=True),
+                      height=250,
+                      width=480,
+                      href=fastqc.summary.link_to_module(
+                          'Per base sequence quality'),
+                      name="boxplot_%s" % fq)
+        fastqc_report.add(boxplot)
+        summary.set_value(idx,'boxplot_%s' % read_id,
+                          Img(fastqc.data.uboxplot(),
+                              href=boxplot))
+        # FastQC summary plot
+        fastqc_report.add("FastQC summary:")
+        fastqc_tbl = Target("fastqc_%s" % fq)
+        fastqc_report.add(fastqc_tbl,fastqc.summary.html_table())
+        summary.set_value(idx,'fastqc_%s' % read_id,
+                          Img(fastqc.summary.ufastqcplot(),
+                              href=fastqc_tbl))
+        fastqc_report.add("%s for %s" % (Link("Full FastQC report",
+                                              fastqc.html_report),
+                                         fq))
+        # Fastq_screens
+        screens_report = report.add_subsection("Screens")
+        fastq_screens = Target("fastq_screens_%s" % fq)
+        screens_report.add(fastq_screens)
+        screen_files = []
+        fastq_screen_txt = []
+        for name in FASTQ_SCREENS:
+            description = name.replace('_',' ').title()
+            png,txt = fastq_screen_output(fq,name)
+            png = os.path.join(self._qc_dir,png)
+            screen_files.append(os.path.join(self._qc_dir,txt))
+            screens_report.add(description)
+            screens_report.add(Img(self._screenpng(png),
+                                   height=250,
+                                   href=png))
+            fastq_screen_txt.append(
+                Link(description,os.path.join(self._qc_dir,txt)).html())
+        screens_report.add("Raw screen data: " +
+                           " | ".join(fastq_screen_txt))
+        summary.set_value(idx,'screens_%s' % read_id,
+                          Img(self._uscreenplot(screen_files),
+                              href=fastq_screens))
+        # Program versions
+        versions = report.add_subsection("Program versions")
+        versions.add(self._program_versions(fq))
 
     def _uscreenplot(self,fastq_screens):
         """
