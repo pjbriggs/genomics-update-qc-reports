@@ -78,14 +78,8 @@ class QCReporter:
                             "     margin: 0;\n"
                             "     border-top-left-radius: 20;\n"
                             "     border-bottom-right-radius: 20; }")
-        report.add_css_rule("h3 { background-color: grey;\n"
+        report.add_css_rule("h3, h4 { background-color: grey;\n"
                             "     color: white;\n"
-                            "     display: block;\n"
-                            "     padding: 5px 15px;\n"
-                            "     margin: 0;\n"
-                            "     border-top-left-radius: 20;\n"
-                            "     border-bottom-right-radius: 20; }")
-        report.add_css_rule("h4 { color: black;\n"
                             "     display: block;\n"
                             "     padding: 5px 15px;\n"
                             "     margin: 0;\n"
@@ -97,6 +91,18 @@ class QCReporter:
                             "          background-color: #ffe;\n"
                             "          border-top-left-radius: 25;\n"
                             "          border-bottom-right-radius: 25; }")
+        report.add_css_rule(".fastqs {\n"
+                            " border: 1px solid grey;\n"
+                            " padding: 5px;\n"
+                            " margin: 5px 20px;\n"
+                            "}")
+        report.add_css_rule(".fastq_r1, .fastq_r2 {\n"
+                            " border: 2px solid lightgray;\n"
+                            " padding: 5px;\n"
+                            " margin: 5px;\n"
+                            " float: left;\n"
+                            "}")
+        report.add_css_rule(".clear { clear: both; }")
         report.add_css_rule("table.summary { border: solid 1px grey;\n"
                             "                background-color: white;\n"
                             "                font-size: 80% }")
@@ -166,13 +172,19 @@ class QCReporter:
                                                           sample_report))
                 else:
                     idx = summary_tbl.add_row(sample="&nbsp;")
+                # Container for fastqs
+                fqs_report = sample_report.add_subsection()
+                fqs_report.add_css_classes('fastqs')
                 # Fastq name(s)
                 fq_r1 = os.path.basename(fq_pair.r1)
                 fq_r2 = os.path.basename(fq_pair.r2)
                 if self.paired_end:
                     # Create subsections for R1 and R2
-                    fqr1_report = sample_report.add_subsection(fq_r1)
-                    fqr2_report = sample_report.add_subsection(fq_r2)
+                    fqr1_report = fqs_report.add_subsection(fq_r1)
+                    fqr2_report = fqs_report.add_subsection(fq_r2)
+                    # Add classes
+                    fqr1_report.add_css_classes('fastq_r1')
+                    fqr2_report.add_css_classes('fastq_r2')
                     # Add entries to summary table
                     summary_tbl.set_value(idx,'fastqs',
                                           "%s<br />%s" %
@@ -180,7 +192,9 @@ class QCReporter:
                                            Link(fq_r2,fqr2_report)))
                 else:
                     # Create subsection for R1 only
-                    fqr1_report = sample_report.add_subsection(fq_r1)
+                    fqr1_report = fqs_report.add_subsection(fq_r1)
+                    # Add classes
+                    fqr1_report.add_css_classes('fastq_r1')
                     # Add entry to summary table
                     summary_tbl.set_value(idx,'fastq',Link(fq_r1,
                                                            fqr1_report))
@@ -191,6 +205,9 @@ class QCReporter:
                                        fqr2_report)
                 # Reset sample name for remaining pairs
                 sample_name = None
+                # Add an empty section to clear HTML floats
+                clear = fqs_report.add_subsection()
+                clear.add_css_classes("clear")
         # Write the report
         report.write("%s.qcreport.html" % self.name)
 
