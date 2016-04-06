@@ -149,9 +149,14 @@ class QCReporter:
         for i,sample in enumerate(self._samples):
             print "Sample #%3d: %s " % (i+1,sample.name)
             sample_name = sample.name
-            sample_report = report.add_section("%s" % sample_name,
+            sample_report = report.add_section("Sample: %s" % sample_name,
                                                name="sample_%s" % sample_name)
             sample_report.add_css_classes('sample')
+            if self.paired_end:
+                sample_report.add("%d fastq R1/R2 pairs" %
+                                  len(sample.fastq_pairs))
+            else:
+                sample_report.add("%d fastqs" % len(sample.fastq_pairs))
             for fq_pair in sample.fastq_pairs:
                 # Sample name for first pair only
                 if sample_name is not None:
