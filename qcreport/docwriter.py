@@ -262,6 +262,69 @@ class Table:
         html.append("</table>")
         return '\n'.join(html)
 
+class List:
+    """
+    Utility class for creating ordered and unordered lists
+
+    Example usage:
+
+    >>> lst = List(ordered=True)
+    >>> lst.add_item("List item")
+    >>> lst.html()
+    "<ol><li>List item</li></ol>"
+
+    """
+    def __init__(self,name=None,ordered=False):
+        """
+        Create a new List instance
+
+        Arguments:
+          name (str): string to use as the 'id'
+            attribute for the <img.../> tag
+          ordered (boolean): if True then create
+            an ordered (i.e. numbered) list;
+            otherwise make an unnumber list (the
+            default)
+
+        """
+        self._name = name
+        self._ordered = bool(ordered)
+        self._items = []
+
+    def add_item(self,content):
+        """
+        Append an item to the list
+
+        """
+        self._items.append(content)
+
+    def html(self):
+        """
+        Generate HTML version of the list
+
+        """
+        # List type
+        if ordered:
+            tag = "ol"
+        else:
+            tag = "ul"
+        # Build the html
+        html = []
+        html.append("<%s" % tag)
+        if self._name:
+            html.append("id='%s'" % self._name)
+        # Add items
+        for item in self._items:
+            html.append("<li>")
+            try:
+                html.append(item.html())
+            except AttributeError:
+                html.append(str(item))
+            html.append("</li>")
+        # Close the list
+        html.append("</%s>" % tag)
+        return " ".join(html)
+
 class Img:
     """
     Utility class for embedding <img> tags
