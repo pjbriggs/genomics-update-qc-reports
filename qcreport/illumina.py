@@ -40,8 +40,8 @@ class QCReporter:
         """
         self._project = project
         self._samples = []
-        self._stats_file = os.path.join(os.path.dirname(self._project.dirn),
-                                        'statistics.info')
+        self._parent_dir = os.path.dirname(self._project.dirn)
+        self._stats_file = os.path.join(self._parent_dir,'statistics.info')
         self._qc_dir = self._project.qc_dir
         try:
             self._stats = FastqStats(self._stats_file)
@@ -59,6 +59,20 @@ class QCReporter:
     @property
     def paired_end(self):
         return self._project.info.paired_end
+
+    def verify(self):
+        """
+        Check that the QC outputs are correct
+
+        Returns True if the QC appears to have run successfully,
+        False if not.
+
+        """
+        verified = True
+        for sample in self._samples:
+            if not sample.verify(self._qc_dir):
+                verified = False
+        return verified
 
     def report(self):
         """
@@ -334,6 +348,19 @@ class QCSample:
     def fastq_pairs(self):
         return self._fastq_pairs
 
+    def verify(self,qc_dir):
+        """
+        Check QC products for this sample
+
+        Checks that fastq_screens and FastQC files were found.
+        Returns True if the QC products are present, False
+        otherwise.
+        """
+        for fq_pair in self.fastq_pairs:
+            if not fq_pair.verify(qc_dir):
+                return False
+        return True
+
 class FastqSet:
     """
     Class describing a set of Fastq files
@@ -371,6 +398,27 @@ class FastqSet:
 
         """
         return self._fastqs[1]
+
+    def verify(self,qc_dir):
+        """
+        Check QC products for this Fastq pair
+
+        Checks that fastq_screens and FastQC files were found.
+        Returns True if the QC products are present, False
+        otherwise.
+
+        Arguments:
+          qc_dir (str): path to the location of the QC
+            output directory
+
+        """
+        for fq in self._fastqs:
+            if fq is None:
+                continue
+            present,missing = check_qc_outputs(fq,qc_dir)
+            if missing:
+                return False
+        return True
 
 class FastqStats(TabFile):
     """
@@ -473,3 +521,48 @@ def fastqc_output(fastq):
     base_name = "%s_fastqc" % strip_ngs_extensions(os.path.basename(fastq))
     return (base_name,base_name+'.html',base_name+'.zip')
 
+def expected_qc_outputs(fastq,qc_dir):
+    """
+    Return list of expected QC products for a FASTQ file
+
+    Arguments:
+      fastq (str): name of FASTQ file
+      qc_dir (str): path to QC directory
+
+    Returns:
+      List: list of paths to the expected associated QC products
+
+    """
+    expected = []
+    # FastQC outputs
+    expected.extend([os.path.join(qc_dir,f)
+                     for f in fastqc_output(fastq)])
+    # Fastq_screen outputs
+    for name in FASTQ_SCREENS:
+        expected.extend([os.path.join(qc_dir,f)
+                         for f in fastq_screen_output(fastq,name)])
+    return expected
+
+def check_qc_outputs(fastq,qc_dir):
+    """
+    Return lists of present and missing QC products for FASTQ file
+
+    Arguments:
+      fastq (str): name of FASTQ file
+      qc_dir (str): path to QC directory
+
+    Returns:
+      Tuple: tuple of the form (present,missing) where present,
+        missing are lists of paths to associated QC products which
+        are present in the QC dir, or are missing.
+
+    """
+    present = []
+    missing = []
+    # Check that outputs exist
+    for output in expected_qc_outputs(fastq,qc_dir):
+        if os.path.exists(output):
+            present.append(output)
+        else:
+            missing.append(output)
+    return (present,missing)
