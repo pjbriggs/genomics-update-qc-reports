@@ -80,8 +80,16 @@ class Fastqc:
         return self.data.version
 
     @property
+    def dir(self):
+        return self._fastqc_dir
+
+    @property
     def html_report(self):
         return self._html_report
+
+    @property
+    def zip(self):
+        return self._zip
 
     @property
     def summary(self):
