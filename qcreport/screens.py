@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
 # fastq screens library
+import os
 from bcftbx.TabFile import TabFile
 from matplotlib import pyplot as plt
 from PIL import Image
@@ -41,7 +42,6 @@ SpR6	89393	89393	100.00	0	0.00	0	0.00	0	0.00	0	0.00
 
 %Hit_no_libraries: 99.73
 
-
 """
 
 class Fastqscreen(TabFile):
@@ -61,10 +61,11 @@ class Fastqscreen(TabFile):
                                        '%Multiple_hits_one_library',
                                        '%One_hit_multiple_libraries',
                                        '%Multiple_hits_multiple_libraries',))
+        self._screen_file = os.path.abspath(screen_file)
         self._version = None
-        self._no_hits = {}
+        self._no_hits = None
         # Read in data
-        with open(screen_file,'r') as fp:
+        with open(self._screen_file,'r') as fp:
             for line in fp:
                 line = line.strip()
                 if line.startswith('#Fastq_screen version:'):
@@ -74,7 +75,7 @@ class Fastqscreen(TabFile):
                     tabfile = TabFile(column_names=line.split())
                     continue
                 elif line.startswith('%Hit_no_libraries:'):
-                    self._no_hits[screen_file] = float(line.split()[-1])
+                    self._no_hits = float(line.split()[-1])
                     continue
                 elif not line or \
                    line.startswith('#') or \
@@ -89,16 +90,39 @@ class Fastqscreen(TabFile):
             self.append(data=data)
 
     @property
+    def txt(self):
+        """
+        Path of the fastq_screen.txt file
+        """
+        return self._screen_file
+
+    @property
+    def png(self):
+        """
+        Path of the fastq_screen.png file
+        """
+        return os.path.splitext(self._screen_file)[0]+'.png'
+
+    @property
     def version(self):
+        """
+        Version of fastq_screen which produced the screens
+        """
         return self._version
 
     @property
     def libraries(self):
+        """
+        List of library names used in the screen
+        """
         return [lib['Library'] for lib in self]
 
     @property
     def no_hits(self):
-        return [self._no_hits[s] for s in self._no_hits][0]
+        """
+        Percentage of reads with no hits on any library
+        """
+        return self._no_hits
 
 def screenplot(screen_files,outfile,threshold=None):
     """
