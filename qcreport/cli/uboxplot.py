@@ -6,8 +6,7 @@ from .. import get_version
 import sys
 import os
 import optparse
-from ..boxplots import uboxplot_from_fastq
-from ..boxplots import uboxplot_from_fastqc_data
+from ..plots import uboxplot
 
 def main():
     # Process command line
@@ -16,17 +15,16 @@ def main():
     opts,args = p.parse_args()
     if len(args) != 1:
         p.error("Need to supply FASTQ file or fastqc_data.txt file")
+    # Make output file name
+    outfile = os.path.splitext(os.path.basename(args[0]))[0] + '.png'
     # Try to detect if file is fastq_data.txt or FASTQ
-    # and call the appropriate function
+    # and call the plotter with the appropriate args
     with open(args[0],'r') as fp:
         line = fp.readline()
         if line.startswith('##FastQC'):
-            uboxplotter = uboxplot_from_fastqc_data
+            uboxplot(fastq_data=args[0],outfile=outfile)
         else:
-            uboxplotter = uboxplot_from_fastq
-    # Make the boxplot
-    outfile = os.path.splitext(os.path.basename(args[0]))[0] + '.png'
-    uboxplotter(args[0],outfile)
+            uboxplot(fastq=args[0],outfile=outfile)
 
 if __name__ == '__main__':
     main()

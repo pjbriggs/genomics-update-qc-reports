@@ -2,13 +2,10 @@
 #
 # fastqc library
 import os
-import tempfile
 from bcftbx.TabFile import TabFile
 from bcftbx.htmlpagewriter import PNGBase64Encoder
 from .docwriter import Table
 from .docwriter import Link
-from .boxplots import uboxplot_from_fastqc_data
-from PIL import Image
 
 """
 Example Fastqc summary text file (FASTQ_fastqc/summary.txt):
@@ -56,6 +53,18 @@ class Fastqc:
     aspects of the outputs of the FastQC program.
 
     """
+    # Base names for plots in the 'Images' subdir
+    plot_names = ('adapter_content',
+                  'duplication_levels',
+                  'kmer_profiles',
+                  'per_base_n_content',
+                  'per_base_quality',
+                  'per_base_sequence_content',
+                  'per_sequence_gc_content',
+                  'per_sequence_quality',
+                  'per_tile_quality',
+                  'sequence_length_distribution',
+                  )
     def __init__(self,fastqc_dir):
         """
         Create a new Fastqc instance
@@ -107,17 +116,35 @@ class Fastqc:
         """
         return self._fastqc_data
 
+    def plot(self,module,inline=False):
+        """
+        """
+        # Normalise name
+        name = module.lower().replace(' ','_')
+        plot_png = os.path.join(self._fastqc_dir,
+                                'Images',
+                                '%s.png' % name)
+        # Check png exists
+        if not os.path.exists(plot_png):
+            return None
+        # Return requested format
+        if inline:
+            return "data:image/png;base64," + \
+                PNGBase64Encoder().encodePNG(plot_png)
+        else:
+            return plot_png
+
     def quality_boxplot(self,inline=False):
         """
         """
-        boxplot = os.path.join(self._fastqc_dir,
-                               'Images',
-                               'per_base_quality.png')
-        if inline:
-            return "data:image/png;base64," + \
-                PNGBase64Encoder().encodePNG(boxplot)
-        else:
-            return boxplot
+        return self.plot('per_base_quality',
+                         inline=inline)
+
+    def adapter_content_plot(self,inline=False):
+        """
+        """
+        return self.plot('Adapter Content',
+                         inline=inline)
 
 class FastqcSummary(TabFile):
     """
@@ -188,19 +215,6 @@ class FastqcSummary(TabFile):
         """
         return os.path.dirname(self.path)+'.html'
 
-    def ufastqcplot(self):
-        """
-        Generate Base64 encoded micro FastQC summary plot
-
-        """
-        fp,tmp_plot = tempfile.mkstemp(".ufastqc.png")
-        ufastqcplot(self.path,tmp_plot)
-        ufastqcplot64encoded = "data:image/png;base64," + \
-                               PNGBase64Encoder().encodePNG(tmp_plot)
-        os.fdopen(fp).close()
-        os.remove(tmp_plot)
-        return ufastqcplot64encoded
-
     def html_table(self):
         """
         Generate HTML table for FastQC summary
@@ -262,6 +276,9 @@ class FastqcData:
 
     @property
     def version(self):
+        """
+        FastQC version number
+        """
         return self._fastqc_version
 
     @property
@@ -271,6 +288,13 @@ class FastqcData:
 
         """
         return self._data_file
+
+    def data(self,module):
+        """
+        """
+        if module in self._modules:
+            return self._modules[module]
+        return None
 
     def basic_statistics(self,measure):
         """
@@ -297,84 +321,8 @@ class FastqcData:
           KeyError: if measure is not found.
 
         """
-        for line in self._modules['Basic Statistics']:
+        for line in self.data('Basic Statistics'):
             key,value = line.split('\t')
             if key == measure:
                 return value
         raise KeyError("No key '%s'" % key)
-
-    def uboxplot(self):
-        """
-        Generate Base64 encoded micro quality boxplot
-
-        """
-        fp,tmp_boxplot = tempfile.mkstemp(".uboxplot.png")
-        uboxplot_from_fastqc_data(self.path,tmp_boxplot)
-        uboxplot64encoded = "data:image/png;base64," + \
-                            PNGBase64Encoder().encodePNG(tmp_boxplot)
-        os.fdopen(fp).close()
-        os.remove(tmp_boxplot)
-        return uboxplot64encoded
-
-def ufastqcplot(summary_file,outfile):
-    """
-    Make a 'micro' summary plot of FastQC output
-
-    The micro plot is a small PNG which represents the
-    summary results from each FastQC module in a
-    matrix, with rows representing the modules and
-    three columns representing the status ('PASS', 'WARN'
-    and 'FAIL', from left to right).
-
-    For example (in text form):
-
-          ==
-    ==
-    ==
-       ==
-    ==
-
-    indictaes that the status of the first module is
-    'FAIL', the 2nd, 3rd and 5th are 'PASS', and the
-    4th is 'WARN'.
-
-    Arguments:
-      summary_file (str): path to a FastQC
-        'summary.txt' output file
-      outfile (str): path for the output PNG
-
-    """
-    status_codes = {
-        'PASS' : { 'index': 0,
-                   'color': 'green',
-                   'rgb': (0,128,0),
-                   'hex': '#008000' },
-        'WARN' : { 'index': 1,
-                   'color': 'orange',
-                   'rgb': (255,165,0),
-                   'hex': '#FFA500' },
-        'FAIL' : { 'index': 2,
-                   'color': 'red',
-                   'rgb': (255,0,0),
-                   'hex': '#FF0000' },
-        }
-    fastqc_summary = FastqcSummary(summary_file)
-    # Initialise output image instance
-    nmodules = len(fastqc_summary.modules)
-    img = Image.new('RGB',(30,4*nmodules),"white")
-    pixels = img.load()
-    # For each test: put a mark depending on the status
-    for im,m in enumerate(fastqc_summary.modules):
-        code = status_codes[fastqc_summary.status(m)]
-        # Make the mark
-        x = code['index']*10 + 1
-        #y = 4*nmodules - im*4 - 3
-        y = im*4 + 1
-        for i in xrange(x,x+8):
-            for j in xrange(y,y+3):
-                #print "%d %d" % (i,j)
-                pixels[i,j] = code['rgb']
-    # Output the plot to file
-    img.save(outfile)
-    return outfile
-

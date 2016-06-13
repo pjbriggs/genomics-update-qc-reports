@@ -7,7 +7,6 @@ import os
 from auto_process_ngs.utils import AnalysisFastq
 from bcftbx.TabFile import TabFile
 from bcftbx.qc.report import strip_ngs_extensions
-from bcftbx.htmlpagewriter import PNGBase64Encoder
 from .docwriter import Document
 from .docwriter import Table
 from .docwriter import Img
@@ -15,7 +14,10 @@ from .docwriter import Link
 from .docwriter import Target
 from .fastqc import Fastqc
 from .screens import Fastqscreen
-from .screens import uscreenplot
+from .plots import uscreenplot
+from .plots import ufastqcplot
+from .plots import uboxplot
+from .plots import encode_png
 
 FASTQ_SCREENS = ('model_organisms',
                  'other_organisms',
@@ -254,14 +256,14 @@ class QCReporter:
                       name="boxplot_%s" % fq)
         fastqc_report.add(boxplot)
         summary.set_value(idx,'boxplot_%s' % read_id,
-                          Img(fastqc.data.uboxplot(),
+                          Img(uboxplot(fastqc.data.path,inline=True),
                               href=boxplot))
         # FastQC summary plot
         fastqc_report.add("FastQC summary:")
         fastqc_tbl = Target("fastqc_%s" % fq)
         fastqc_report.add(fastqc_tbl,fastqc.summary.html_table())
         summary.set_value(idx,'fastqc_%s' % read_id,
-                          Img(fastqc.summary.ufastqcplot(),
+                          Img(ufastqcplot(fastqc.summary.path,inline=True),
                               href=fastqc_tbl))
         fastqc_report.add("%s for %s" % (Link("Full FastQC report",
                                               fastqc.html_report),
@@ -278,7 +280,7 @@ class QCReporter:
             png = os.path.join(self._qc_dir,png)
             screen_files.append(os.path.join(self._qc_dir,txt))
             screens_report.add(description)
-            screens_report.add(Img(self._screenpng(png),
+            screens_report.add(Img(encode_png(png),
                                    height=250,
                                    href=png))
             fastq_screen_txt.append(
@@ -286,26 +288,11 @@ class QCReporter:
         screens_report.add("Raw screen data: " +
                            " | ".join(fastq_screen_txt))
         summary.set_value(idx,'screens_%s' % read_id,
-                          Img(self._uscreenplot(screen_files),
+                          Img(uscreenplot(screen_files,inline=True),
                               href=fastq_screens))
         # Program versions
         versions = report.add_subsection("Program versions")
         versions.add(self._program_versions(fq))
-
-    def _uscreenplot(self,fastq_screens):
-        """
-        """
-        tmp_plot = "tmp.%s.ufastqscreenplot.png" % \
-                   os.path.basename(fastq_screens[0])
-        uscreenplot(fastq_screens,tmp_plot)
-        uscreenplot64encoded = "data:image/png;base64," + \
-                               PNGBase64Encoder().encodePNG(tmp_plot)
-        os.remove(tmp_plot)
-        return uscreenplot64encoded
-
-    def _screenpng(self,fastq_screen_png):
-        return "data:image/png;base64," + \
-            PNGBase64Encoder().encodePNG(fastq_screen_png)
 
     def _program_versions(self,fastq):
         """
